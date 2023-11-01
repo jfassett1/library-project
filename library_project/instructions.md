@@ -1,0 +1,5 @@
+### INSTRUCTIONS
+To use this module you must have docker and docker-compose installed. Note both docker and docker-compose are installed by default with docker desktop. Once installed, run the first 3 commands in commands.txt to create the image and run it locally. To access the image via the command line you can use the 4th command which will give you access to the django container or the 5th command for the mysql container (note the containers must be running for this to work. If you ran them in the terminal you will need to open up a separate terminal to access them). Finally, data from the mysql database will be stored on your local machine when the image is terminated.
+To access the website created in django, use port 8000 on local host. Once again, this will only work if the image is active.
+
+To add tables to the mysql database simply use the django api. The tables are defined in the models.py file. For more info follow [this video](https://www.youtube.com/watch?v=z5e_8FgKZig).
