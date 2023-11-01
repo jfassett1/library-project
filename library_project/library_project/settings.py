@@ -11,10 +11,11 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'library_project' # adds schema/models to module
 ]
 
 MIDDLEWARE = [
@@ -76,14 +78,15 @@ WSGI_APPLICATION = 'library_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'django-app-db',
+        'NAME': 'library',
         'USER': 'root',
         'PASSWORD': '',
         'HOST': 'db',
         'PORT': '3306',
     }
 }
-
+# os.environ.get("MY_SQL_USER")
+# os.environ.get("MY_SQL_PASS")
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
