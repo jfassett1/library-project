@@ -1,1 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Librarian View</title>
+<script>
+    let fetched_data;
+    function get_data() {
+
+        let fetched_data;
+        fetch("/db_ping/")
+        .then(response => {
+            if (response.ok) {
+                return response.json(); // Parse the JSON response
+            } else {
+                throw new Error("Network response was not ok");
+            }
+        })
+        .then(data => {
+            // Handle the data received from the server
+            console.log(data);
+            let p = document.createElement("p");
+            p.textContent = data.message;
+            document.getElementById("div1").appendChild(p);
+        })
+        .catch(error => {
+            // Handle errors that may occur during the fetch
+            console.error('Error:', error);
+        });
+    }
+
+ 
+</script>
+
+</head>
+<body>
 <h1>test</h1>
+<button onclick = "get_data()">Press for db test</button>
+<div id = "div1">
+ 
+</div>
+</body>
+</html>
