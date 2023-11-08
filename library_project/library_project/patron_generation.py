@@ -1,9 +1,9 @@
 import pandas as pd
 import random as rand
-surnames = pd.read_csv("data/engwales_surnames.csv",encoding='unicode_escape')["Name"]
+surnames = pd.read_csv("/data/engwales_surnames.csv",encoding='unicode_escape')["Name"]
 # first = pd.read_csv("data/male.txt")
-firstnames = open("data/male.txt").read().split()
-firstnames += open("data/female.txt").read().split()
+firstnames = open("/data/male.txt").read().split()
+firstnames += open("/data/female.txt").read().split()
 firstnames
 
 def build_names(first:list,last:list,n):
