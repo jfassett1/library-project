@@ -3,10 +3,77 @@
 <head>
 <title>Librarian View</title>
 <script>
-    let fetched_data;
+
+    function parseResponse(data){
+        let jsonLike = data.replace(/\(/g, '[').replace(/\)/g, ']');  
+        // Replace single quotes with double quotes to make it valid JSON
+        jsonLike = jsonLike.replace(/'/g, '"');
+        // console.log(jsonLike);
+        let result = JSON.parse(jsonLike);
+        const arrayOfJSON = result.map(([id, name, username, email]) => ({
+                                 id,
+                                 name,
+                                 username,
+                                 email
+        }));
+        console.log(arrayOfJSON);
+        return arrayOfJSON;
+    }
+
+    function buildTable(parseddata) {
+    // Get a reference to the container where you want to append the table
+    const container = document.getElementById('table-container');
+
+    // Create a table element
+    const table = document.createElement('table');
+
+    // Create a table header row
+    const headerRow = document.createElement('tr');
+
+    // Define the table headers
+    const headers = ['ID', 'Name', 'Username', 'Email'];
+
+    // Loop through the headers and create header cells
+    headers.forEach(headerText => {
+        const headerCell = document.createElement('th');
+        headerCell.textContent = headerText;
+        headerRow.appendChild(headerCell);
+    });
+
+    // Append the header row to the table
+    table.appendChild(headerRow);
+
+    // Loop through the parsed data and create a row for each element
+    parseddata.forEach(element => {
+        const row = document.createElement('tr');
+
+        // Create data cells for each property (id, name, username, email)
+        const idCell = document.createElement('td');
+        idCell.textContent = element.id;
+        row.appendChild(idCell);
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = element.name;
+        row.appendChild(nameCell);
+
+        const usernameCell = document.createElement('td');
+        usernameCell.textContent = element.username;
+        row.appendChild(usernameCell);
+
+        const emailCell = document.createElement('td');
+        emailCell.textContent = element.email;
+        row.appendChild(emailCell);
+
+        // Append the row to the table
+        table.appendChild(row);
+    });
+
+    // Append the table to the container
+    container.appendChild(table);
+}
+let fetched_data;
     function get_data() {
 
-        let fetched_data;
         fetch("/db_ping/")
         .then(response => {
             if (response.ok) {
@@ -17,18 +84,17 @@
         })
         .then(data => {
             // Handle the data received from the server
-            console.log(data);
-            let p = document.createElement("p");
-            p.textContent = data.message;
-            document.getElementById("div1").appendChild(p);
+            let parsed = parseResponse(data.message);
+            buildTable(parsed);
+            // let p = document.createElement("p");
+            // p.textContent = data.message;
+            // document.getElementById("div1").appendChild(p);
         })
         .catch(error => {
             // Handle errors that may occur during the fetch
             console.error('Error:', error);
         });
     }
-
- 
 </script>
 
 </head>
@@ -36,7 +102,8 @@
 <h1>test</h1>
 <button onclick = "get_data()">Press for db test</button>
 <div id = "div1">
- 
+<div id="table-container"></div>
+
 </div>
 </body>
 </html>

@@ -29,7 +29,7 @@ def db_ping(request):
         cursor.execute("use library")
         cursor.execute(query)
         conn.close()
-        message = f"Executed successfully\n Data: {cursor.fetchall()}"
+        message = f"{cursor.fetchall()}"
     except MySQLdb.Error as e:
         message = f'Database connection failed: {e}'
     return JsonResponse({"message":message})

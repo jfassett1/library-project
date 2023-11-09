@@ -1,9 +1,17 @@
 import pandas as pd
 import random as rand
-surnames = pd.read_csv("/data/engwales_surnames.csv",encoding='unicode_escape')["Name"]
+import os
+
+
+current_path = os.path.dirname(__file__)
+parent_folder = os.path.abspath(os.path.join(current_path, os.pardir))
+data_folder = os.path.join(parent_folder, "data/")
+
+
+surnames = pd.read_csv(f"{data_folder}engwales_surnames.csv",encoding='unicode_escape')["Name"]
 # first = pd.read_csv("data/male.txt")
-firstnames = open("/data/male.txt").read().split()
-firstnames += open("/data/female.txt").read().split()
+firstnames = open(f"{data_folder}male.txt").read().split()
+firstnames += open(f"{data_folder}female.txt").read().split()
 firstnames
 
 def build_names(first:list,last:list,n):
@@ -33,8 +41,11 @@ emails = []
 def mainbuild(n=0):
     namelist = build_names(firstnames,surnames,n)
     ids = build_ids(namelist)
-    first = [name[0] for name in namelist]
-    last = [name[1] for name in namelist]
+    # first = [name[0] for name in namelist]
+    # last = [name[1] for name in namelist]
+    new_names = []
+    for name in namelist:
+        new_names.append(f"{name[0]} {name[1]}")
     endings = ["@gmail.com","@hotmail.com",
     "@gmail.com",
     "@yahoo.com",
@@ -45,8 +56,8 @@ def mainbuild(n=0):
     "@protonmail.com"]
 
     emails = [id + endings[rand.randint(0,len(endings)-1)] for id in ids]
-    return pd.DataFrame({"First":first,
-                         "Last":last,
+    return pd.DataFrame({
+                         "Names":new_names,
                          "ID":ids,
                          "Emails":emails})
     
@@ -55,4 +66,4 @@ df = mainbuild(100)
 
 # for i in df.itertuples():
 #     print(tuple(i)[1:])
-print(tuple(map(lambda x: tuple(x)[1:], df.itertuples())))
+# print(tuple(map(lambda x: tuple(x)[1:], df.itertuples())))
