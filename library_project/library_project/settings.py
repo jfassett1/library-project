@@ -85,6 +85,13 @@ DATABASES = {
         'PORT': '3306',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 # os.environ.get("MY_SQL_USER")
 # os.environ.get("MY_SQL_PASS")
 # Password validation
