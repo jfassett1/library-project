@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sample Form</title>
+<!-- Include jQuery library -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#myForm').submit(function(e) {
+        e.preventDefault(); // Prevent the default form submit action
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-CSRFToken', $('input[name=csrfmiddlewaretoken]').val());
+            },
+            success: function(response) {
+                // Handle success
+                console.log('Success:', response);
+            },
+            error: function(xhr, status, error) {
+                // Handle error
+                console.error('Error:', status, error);
+            }
+        });
+    });
+});
+</script>
+</head>
+<body>
+<button id = "myButton">Initialize_db</button>
+</body>
+</html>
