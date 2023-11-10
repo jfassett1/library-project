@@ -84,7 +84,6 @@ function get_data(table, csrf) {
     })
     .then(data => {
         // Handle the data received from the server
-        console.log(data);
         let parsed = parseResponse(data.message); // Depending on the response, you might not need to access .message
         buildTable(parsed);
     })

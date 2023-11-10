@@ -1,7 +1,7 @@
 from initialize_db import list_of_tables
 import MySQLdb
 
-
+list_of_tables.reverse()
 try:
     conn = MySQLdb.connect("db")
     cursor = conn.cursor()

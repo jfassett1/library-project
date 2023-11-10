@@ -1,5 +1,6 @@
 import MySQLdb
 from patron_generation import mainbuild
+from populate_books import bookdata,tagdata
 import os
 import pandas as pd
 current_path = os.path.dirname(__file__)
@@ -24,7 +25,7 @@ list_of_tables = [
 #Creating tables
 queries = []
 queries.append("CREATE TABLE library_project_patron (AccID INT AUTO_INCREMENT PRIMARY KEY, Name VARCHAR(50) NOT NULL, Address VARCHAR(100) NOT NULL, Email VARCHAR(40) NOT NULL);")
-queries.append("CREATE TABLE library_project_bookdata (ISBN CHAR(13) PRIMARY KEY, Title VARCHAR(65) NOT NULL, PublishDate YEAR, Publisher VARCHAR(20), Description TEXT);")
+queries.append("CREATE TABLE library_project_bookdata (ISBN CHAR(13) PRIMARY KEY, Title VARCHAR(200) NOT NULL, PublishDate INT, Description TEXT);")
 queries.append("CREATE TABLE library_project_book (DecimalCode CHAR(12) PRIMARY KEY, ISBN CHAR(13) REFERENCES library_project_bookdata(ISBN), Status TINYINT NOT NULL);")
 queries.append("CREATE TABLE library_project_author (ISBN CHAR(13) REFERENCES library_project_bookdata(ISBN), DOB DATE, Name VARCHAR(50), PRIMARY KEY (ISBN, DOB));")
 queries.append("CREATE TABLE library_project_categorynames (CategoryID INT PRIMARY KEY, Name VARCHAR(35) NOT NULL);")
@@ -57,18 +58,19 @@ def createTable(queries):
 
 
 
-def insert(table,values):
+def insert(table,fields,values,):
     try:
         conn = MySQLdb.connect("db")
         cursor = conn.cursor()
         cursor.execute("use library")
-        query = f"INSERT INTO {table} (Name, Address, Email) VALUES (%s, %s, %s)"
+        placeholders = ', '.join(['%s'] * len(fields.split(',')))
+        query = f"INSERT INTO {table} ({fields}) VALUES ({placeholders})"
         
         # Execute the query for each set of values in the list
         cursor.executemany(query, values)
         
         conn.commit()
-        print("Data inserted successfully!")
+        print(f"Data for {table} inserted successfully!")
 
     except MySQLdb.Error as e:
         print(f"Error: {e}")
@@ -77,13 +79,28 @@ def insert(table,values):
             conn.close()
     return
 def initialize():
-    n_patrons = int(input("How many people do you want?\n"))
+
+    #Initializing tables
+    createTable(queries)
+
+    #Building Patron accounts
+    # n_patrons = int(input("How many people do you want?\n"))
+    n_patrons = 100
+    print(f"Building {n_patrons} patron accounts")
     patron_accounts = mainbuild(n_patrons)
     values = tuple(map(lambda x: tuple(x)[1:], patron_accounts.itertuples()))
 
-    createTable(queries)
-    insert("library_project_patron",values)
+    #Building bookdata
+    # book_data = create_bookdata()
+
+    #Building Tag data
+    # tag_data = create_tags()
+    #Building tables & inserting 
+    insert("library_project_patron","Name, Address, Email",values)
+    insert("library_project_bookdata","ISBN, Title, PublishDate, Description",bookdata)
+    insert("library_project_categorynames","CategoryID, Name",tagdata)
     return
+
 #Main
 if __name__ == "__main__":
     initialize()

@@ -4,8 +4,8 @@ import os
 
 
 current_path = os.path.dirname(__file__)
-parent_folder = os.path.abspath(os.path.join(current_path, os.pardir))
-data_folder = os.path.join(parent_folder, "data/")
+# parent_folder = os.path.abspath(os.path.join(current_path, os.pardir))
+data_folder = os.path.join(os.pardir, "../data/")
 
 
 surnames = pd.read_csv(f"{data_folder}engwales_surnames.csv",encoding='unicode_escape')["Name"]
@@ -61,7 +61,7 @@ def mainbuild(n=0):
                          "ID":ids,
                          "Emails":emails})
     
-df = mainbuild(100)
+# df = mainbuild(100)
 
 
 # for i in df.itertuples():
