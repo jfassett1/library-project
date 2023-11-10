@@ -1,17 +1,10 @@
-{%load static%}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
-    <link rel="stylesheet" type="text/css" href="{%static 'style.css' %}">
-</head>
-<body>
+{% block title %}eLib - Search Results{% endblock %}
+
+{% block body %}
     <div class="container">
         <p> {{form_data}} </p>
         <p> {{good}} </p>
     </div>
-</body>
-</html>
+{% endblock %}
