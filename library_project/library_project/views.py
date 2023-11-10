@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 # from . import initialize_db
 import MySQLdb
-from forms import SearchForm
+from .forms import SearchForm
 
 
 def homepage(request):
