@@ -1,8 +1,8 @@
 import MySQLdb
-from patron_generation import mainbuild
-from populate_books import bookdata,tagdata
+from populate_books import create_bookdata, create_data_set
 import os
-import pandas as pd
+from faker import Faker
+
 current_path = os.path.dirname(__file__)
 parent_folder = os.path.abspath(os.path.join(current_path, os.pardir))
 data_folder = os.path.join(parent_folder, "data/")
@@ -34,7 +34,7 @@ queries.append("CREATE TABLE library_project_checkout (Patron INT REFERENCES lib
 queries.append("CREATE TABLE library_project_distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE library_project_elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
 
-def createTable(queries):
+def create_table(queries):
     try:
         conn = MySQLdb.connect("db")
         cursor = conn.cursor()
@@ -42,8 +42,8 @@ def createTable(queries):
         for table,tablename in zip(queries,list_of_tables):
             print(f"Creating table {tablename}")
             cursor.execute(table)
-        
-        # Execute the query for each set of values in the list        
+
+        # Execute the query for each set of values in the list
         conn.commit()
         print("Created Succesfully!")
 
@@ -52,23 +52,22 @@ def createTable(queries):
     finally:
         if conn:
             conn.close()
-    return       
-        
-
-
-
+    return
 
 def insert(table,fields,values,):
+    # try:
+    conn = MySQLdb.connect("db")
+
     try:
-        conn = MySQLdb.connect("db")
+
         cursor = conn.cursor()
         cursor.execute("use library")
         placeholders = ', '.join(['%s'] * len(fields.split(',')))
         query = f"INSERT INTO {table} ({fields}) VALUES ({placeholders})"
-        
+
         # Execute the query for each set of values in the list
         cursor.executemany(query, values)
-        
+
         conn.commit()
         print(f"Data for {table} inserted successfully!")
 
@@ -77,29 +76,27 @@ def insert(table,fields,values,):
     finally:
         if conn:
             conn.close()
-    return
+
+
 def initialize():
 
     #Initializing tables
-    createTable(queries)
-
+    create_table(queries)
+    fake = Faker()
     #Building Patron accounts
     # n_patrons = int(input("How many people do you want?\n"))
     n_patrons = 100
     print(f"Building {n_patrons} patron accounts")
-    patron_accounts = mainbuild(n_patrons)
-    values = tuple(map(lambda x: tuple(x)[1:], patron_accounts.itertuples()))
+    values = tuple(
+        zip([fake.name() for _ in range(n_patrons)],
+            [fake.address() for _ in range(n_patrons)],
+            [fake.unique.email() for _ in range(n_patrons)]))
 
-    #Building bookdata
-    # book_data = create_bookdata()
-
-    #Building Tag data
-    # tag_data = create_tags()
-    #Building tables & inserting 
+    bookdata = create_bookdata(books)
+    tagdata = create_data_set(tags,tags.columns)
     insert("library_project_patron","Name, Address, Email",values)
     insert("library_project_bookdata","ISBN, Title, PublishDate, Description",bookdata)
     insert("library_project_categorynames","CategoryID, Name",tagdata)
-    return
 
 #Main
 if __name__ == "__main__":

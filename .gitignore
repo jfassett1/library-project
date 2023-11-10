@@ -2,3 +2,5 @@ library_project/data/mysql/*
 library_project/staticfiles/*
 library_project/library_project/__pycache__/*
 __pycache__/
+.vscode/
+.venv/

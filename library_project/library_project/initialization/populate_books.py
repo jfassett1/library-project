@@ -11,7 +11,7 @@ data_folder = os.path.join(os.pardir, "../data/")
 books = pd.read_csv(f"{data_folder}books.csv")
 books = books.dropna()
 books.drop_duplicates(subset=["isbn13"],keep="first",inplace=True)
-mask = books.applymap(lambda x: '?' in str(x)).any(axis=1)
+mask = books.map(lambda x: '?' in str(x)).any(axis=1)
 books = books[~mask]
 
 #Tags
@@ -30,7 +30,7 @@ def create_bookdata(df=books):
         book_tuples.append((isbn13, original_title, original_publication_year,desc))
     return tuple(book_tuples)
 
-def createDataSet(df, column_names):
+def create_data_set(df, column_names):
     data_tuples = []
 
     for i in range(len(df)):
@@ -39,5 +39,4 @@ def createDataSet(df, column_names):
 
     return tuple(data_tuples)
 
-bookdata = create_bookdata(books)
-tagdata = createDataSet(tags,tags.columns)
+
