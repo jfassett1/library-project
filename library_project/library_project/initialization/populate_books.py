@@ -1,10 +1,31 @@
+from itertools import repeat
 import pandas as pd
-import random as rand
+# TODO: Update paths to use pathlib instead of strings
+import pathlib
 import os
 
+def create_bookdata(books:pd.DataFrame):
+    return tuple(
+        zip(
+            books["isbn13"].astype(int),
+            books["original_title"],
+            books["original_publication_year"].astype(int),
+            repeat("Filler")
+        )
+    )
+
+
+def create_data_set(df, column_names):
+    data_tuples = []
+
+    for i in range(len(df)):
+        row_data = tuple(df.iloc[i][col] for col in column_names)
+        data_tuples.append(row_data)
+
+    return tuple(data_tuples)
 
 current_path = os.path.dirname(__file__)
-parent_folder = os.path.abspath(os.path.join(current_path, os.pardir))
+os.path.abspath(os.path.join(current_path, os.pardir))
 data_folder = os.path.join(os.pardir, "../data/")
 
 #Books data cleaning
@@ -19,24 +40,5 @@ tags = pd.read_csv(f"{data_folder}tags.csv")
 
 
 book_cols = ["isbn13","original_title","original_publication_year"]
-
-def create_bookdata(df=books):
-    book_tuples = []
-    for i in range(len(books)):
-        isbn13 = int(books.iloc[i]["isbn13"])
-        original_title = books.iloc[i]["original_title"]
-        original_publication_year = int(books.iloc[i]["original_publication_year"])
-        desc = "filler"
-        book_tuples.append((isbn13, original_title, original_publication_year,desc))
-    return tuple(book_tuples)
-
-def create_data_set(df, column_names):
-    data_tuples = []
-
-    for i in range(len(df)):
-        row_data = tuple(df.iloc[i][col] for col in column_names)
-        data_tuples.append(row_data)
-
-    return tuple(data_tuples)
-
-
+bookdata = create_bookdata(books)
+tagdata = create_data_set(tags,tags.columns)

@@ -1,5 +1,5 @@
 import MySQLdb
-from populate_books import create_bookdata, create_data_set
+import populate_books
 import os
 from faker import Faker
 
@@ -92,11 +92,10 @@ def initialize():
             [fake.address() for _ in range(n_patrons)],
             [fake.unique.email() for _ in range(n_patrons)]))
 
-    bookdata = create_bookdata(books)
-    tagdata = create_data_set(tags,tags.columns)
+
     insert("library_project_patron","Name, Address, Email",values)
-    insert("library_project_bookdata","ISBN, Title, PublishDate, Description",bookdata)
-    insert("library_project_categorynames","CategoryID, Name",tagdata)
+    insert("library_project_bookdata","ISBN, Title, PublishDate, Description", populate_books.bookdata)
+    insert("library_project_categorynames","CategoryID, Name", populate_books.tagdata)
 
 #Main
 if __name__ == "__main__":
