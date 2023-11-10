@@ -3,15 +3,34 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 # from . import initialize_db
 import MySQLdb
+from forms import SearchForm
 
+
+def homepage(request):
+    form = SearchForm()
+    return render(request, "home.html", {"form":form})
+
+def search(request):
+    if request.method == "POST":
+        # data = request.GET
+        form = SearchForm(request.POST)
+
+        # check whether it's valid:
+        if form.is_valid():
+            good = "yes"
+        else:
+            good = "no"
+        data = str(form.cleaned_data)
+        return render(request, "search.html", {"form_data":data, "good":good})
+    return render(request, "search.html")
 
 
 def landing(request):
     return render(request,"landing.html")
 
 def lib(request):
-    
     return render(request,'librarian.html')
+
 def patron(request):
     return render(request,"patron.html")
 
@@ -25,7 +44,7 @@ from django.views.decorators.csrf import csrf_exempt
 def db_ping(request):
     try:
         conn = MySQLdb.connect("db")
-        
+
         cursor = conn.cursor()
         query = "select * from library_project_patron"
         cursor.execute("use library")
