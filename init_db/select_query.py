@@ -1,12 +1,9 @@
-import MySQLdb
-from django.db import models
-
 from collections import namedtuple
 
 # classes for inputs
 Table = namedtuple("Table", "nick, name, columns")
 Feature = namedtuple("Feature", "nick, name, operations")
-
+Condition = namedtuple("Condition", "main_feat, comparison_feats, operator")
 
 class RawSelectQuery:
     """
@@ -95,6 +92,7 @@ class RawSelectQuery:
 
         self._add_condition(*conditions[-1])
         # where follows the pattern of columns, relation, restriction
+
 
     def order(self, order):
         if order.direction not in ("ASC", "DESC"):
