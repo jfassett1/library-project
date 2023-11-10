@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.http import JsonResponse
+# from . import initialize_db
 import MySQLdb
 
 
@@ -16,12 +17,13 @@ def patron(request):
 
 def test(request):
     message = "test succesful"
-    return JsonResponse({"message":message})
+    return render(request,"test.html")
 
+from django.views.decorators.csrf import csrf_exempt
 
+# @csrf_exempt
 def db_ping(request):
     try:
-        # Attempt to establish a database connection
         conn = MySQLdb.connect("db")
         
         cursor = conn.cursor()
