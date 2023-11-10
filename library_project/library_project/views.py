@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 import MySQLdb
 from forms import SearchForm
+from init_db.select_query import make_select_query
 
 
 def homepage(request):
@@ -11,7 +12,6 @@ def homepage(request):
 
 def search(request):
     if request.method == "POST":
-        # data = request.GET
         form = SearchForm(request.POST)
 
         # check whether it's valid:
