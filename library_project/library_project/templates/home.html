@@ -1,21 +1,16 @@
-{% comment %} {%load static%} {% endcomment %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
-    <link rel="stylesheet" type="text/css" href="{%static 'style.css' %}">
-</head>
-<body>
+{% block title %}Home{% endblock %}
+
+{% block body %}
     <div class="container">
         <h1>Welcome!</h1>
-        <form method="GET" action="{% url 'search-page' %}">
-            {{ form }}
+        <form method="POST" action="{% url 'search-page' %}">
+
+            {% csrf_token %}
+            {{ form.as_p }}
             <button type="submit">Submit</button>
             {% comment %} <input type="submit" value="Submit"> {% endcomment %}
         </form>
     </div>
-</body>
-</html>
+{% endblock %}

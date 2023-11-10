@@ -110,7 +110,7 @@ class RawSelectQuery:
     def having(self, having):
         self.query += "\nHAVING "
         conditions, ops = having[0::2], having[1::2]
-        for (preprocess, op, operands, condition), joiner in zip(conditions, ops):
+        for (op, operands, condition), joiner in zip(conditions, ops):
             self._add_condition(op, operands, condition)
             self.query += f"\n{joiner} "
 
