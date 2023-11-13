@@ -1,23 +1,17 @@
 from initialize_db import list_of_tables
 import MySQLdb
+from db_connect import get_cursor
 
-list_of_tables.reverse()
-try:
-    conn = MySQLdb.connect("db")
-    cursor = conn.cursor()
-    cursor.execute("use library")
-    for table in list_of_tables:   
+# list_of_tables.reverse()
+with MySQLdb.connect("db") as conn:
+    cursor = get_cursor(conn)
+    for table in list_of_tables:
         print(f"Removing {table}")
         query = f"drop table {table}"
-        cursor.execute(query)
-        # Execute the query for each set of values in the list
-    # cursor.executemany(query, values)
-        
+        try:
+            cursor.execute(query)
+        except MySQLdb.Error as e:
+            print(f"Error: {e}")
+        else:
+            print("Data removed successfully!")
     conn.commit()
-    print("Data removed successfully!")
-
-except MySQLdb.Error as e:
-    print(f"Error: {e}")
-finally:
-    if conn:
-        conn.close()

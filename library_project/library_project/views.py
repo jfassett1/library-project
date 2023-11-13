@@ -4,7 +4,7 @@ from django.http import JsonResponse
 # from . import initialize_db
 import MySQLdb
 from .forms import SearchForm
-from utils.select_query import make_select_query
+import utils.select_query
 
 
 def homepage(request):
@@ -17,11 +17,22 @@ def search(request):
 
         # check whether it's valid:
         if form.is_valid():
-            good = "yes"
+            fields = {k:v for k,v in filter(lambda x: x[1] != '', form.cleaned_data.items())}
         else:
-            good = "no"
+            fields = {}
+
+        # Construct the query based on form data
+        # raw_search = form.cleaned_data['raw_search']
+        # author = form.cleaned_data['author']
+        # genre = form.cleaned_data['genre']
+        # in_stock = form.cleaned_data['in_stock']
+        # isbn = form.cleaned_data['isbn']
+        # decimal_code = form.cleaned_data['decimal_code']
+        query = "SELECT BookData. FROM BookData LEFT JOIN Author ON BookData.ISBN = Author.ISBN"
+        if 'raw_search' in fields:
+            query += "WHERE  IN ()"
         data = str(form.cleaned_data)
-        return render(request, "search.html", {"form_data":data, "good":good})
+        return render(request, "search.html", {"form_data":data, "good":fields})
     return render(request, "search.html")
 
 
@@ -39,6 +50,8 @@ def test(request):
     return render(request,"test.html")
 
 def db_ping(request):
+    # with MySQLdb.connect("db") as conn:
+
     try:
         conn = MySQLdb.connect("db")
 
