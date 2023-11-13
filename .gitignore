@@ -4,3 +4,4 @@ library_project/library_project/__pycache__/*
 __pycache__/
 .vscode/
 .venv/
+books_data.csv
