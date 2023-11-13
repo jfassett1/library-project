@@ -3,3 +3,5 @@ To use this module you must have docker and docker-compose installed. Note both 
 To access the website created in django, use port 8000 on local host. Once again, this will only work if the image is active.
 
 To add tables to the mysql database simply use the django api. The tables are defined in the models.py file. For more info follow [this video](https://www.youtube.com/watch?v=z5e_8FgKZig). See the [documentation](https://docs.djangoproject.com/en/4.2/topics/db/models/) for more details. For a step by step tutorial see [W3 schools](https://www.w3schools.com/django/).
+
+To get the books data, go [here](https://www.kaggle.com/datasets/mohamedbakhet/amazon-books-reviews/data?select=books_data.csv) and download just the books_data.csv file. Then place the file in the data folder.
