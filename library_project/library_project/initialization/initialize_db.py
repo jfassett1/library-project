@@ -20,11 +20,22 @@ list_of_tables = [
 
 #Creating tables
 queries = []
-queries.append("CREATE TABLE patron (AccID INT AUTO_INCREMENT PRIMARY KEY, Name VARCHAR(50) NOT NULL, Address VARCHAR(100) NOT NULL, Email VARCHAR(40) NOT NULL);")
+queries.append("""
+CREATE TABLE patron (
+    AccID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50) NOT NULL,
+    Address VARCHAR(100) NOT NULL,
+    Email VARCHAR(40) NOT NULL
+);""")
 queries.append("""
 CREATE TABLE publisher (
     PublisherID INT PRIMARY KEY,
     PublisherName VARCHAR(50)
+);""")
+queries.append("""
+CREATE TABLE category (
+    CategoryID INT PRIMARY KEY,
+    CategoryName VARCHAR(35) NOT NULL
 );""")
 queries.append("""
 CREATE TABLE bookdata (
@@ -32,13 +43,36 @@ CREATE TABLE bookdata (
 	Title VARCHAR(255) NOT NULL,
 	PublishDate INT,
 	Publisher INT REFERENCES publisher(PublisherID),
+    Category INT REFERENCES category(CategoryID),
 	Description TEXT
 );""")
-queries.append("CREATE TABLE book (DecimalCode CHAR(12) PRIMARY KEY, ISBN CHAR(13) REFERENCES bookdata(ISBN), Status TINYINT NOT NULL);")
-queries.append("CREATE TABLE author (ISBN CHAR(13) REFERENCES bookdata(ISBN), DOB DATE, Name VARCHAR(50), PRIMARY KEY (ISBN, DOB));")
-queries.append("CREATE TABLE categorynames (CategoryID INT PRIMARY KEY, Name VARCHAR(35) NOT NULL);")
-queries.append("CREATE TABLE bookcategory (CategoryID INT REFERENCES categorynames(CategoryID), ISBN CHAR(13) REFERENCES bookdata(ISBN), PRIMARY KEY (CategoryID, ISBN));")
-queries.append("CREATE TABLE checkout (Patron INT REFERENCES patron(AccID), Book CHAR(12) REFERENCES book(DecimalCode), Time_Out DATETIME NOT NULL, Due DATE NOT NULL, PRIMARY KEY (Patron, Book));")
+queries.append("""
+CREATE TABLE book (
+    DecimalCode CHAR(12) PRIMARY KEY,
+    BookID INT REFERENCES bookdata(BookID),
+    Status TINYINT NOT NULL
+);""")
+queries.append("""
+CREATE TABLE author (
+    BookID INT REFERENCES bookdata(BookID),
+    Name VARCHAR(50) DEFAULT 'UNKNOWN',
+    PRIMARY KEY (BookID, Name)
+);""")
+
+# queries.append("""
+# CREATE TABLE bookcategory (
+#     CategoryID INT REFERENCES categorynames(CategoryID),
+#     BookID INT REFERENCES bookdata(BookID),
+#     PRIMARY KEY (CategoryID, BookID)
+# );""")
+queries.append(
+"""CREATE TABLE checkout (
+    Patron INT REFERENCES patron(AccID),
+    Book CHAR(12) REFERENCES book(DecimalCode),
+    Time_Out DATETIME NOT NULL,
+    Due DATE NOT NULL,
+    PRIMARY KEY (Patron, Book)
+);""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
 
@@ -58,7 +92,7 @@ def create_table(queries):
         conn.commit()
 
 
-def insert(table:str,fields:str, values:tuple[tuple, ...]):
+def insert(table:str, fields:str, values:tuple[tuple, ...]):
 
     with MySQLdb.connect("db") as conn:
 
@@ -91,9 +125,10 @@ def initialize():
     # read and insert book data
     books_data = populate_books.read_books_data()
     insert("patron","Name, Address, Email",values)
-    insert("publisher", "PublisherID, PublisherName", populate_books.create_publisher_data(books_data))
+    insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
     insert("bookdata","Title, PublishDate, Publisher, Description", populate_books.create_book_data(books_data))
-    # insert("categorynames","CategoryID, Name", populate_books.tagdata)
+    insert("categorynames","CategoryID, Name", populate_books.extract_categorical_book_data(books_data, "categories"))
+    # NOTE: For the author table https://medium.com/@akaivdo/pandas-how-to-convert-a-multi-value-column-to-multiple-rows-75c8d4cc2f4a
 
 #Main
 if __name__ == "__main__":
