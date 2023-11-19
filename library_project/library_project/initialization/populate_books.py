@@ -106,6 +106,6 @@ if __name__ == "__main__":
     # print(books_data.isna().sum())
     # print(books_data["publishedDate"].min(),books_data["publishedDate"].max())
     # print(books_data.dtypes)
-    # print()
+    print(create_book_data(books_data)[:30])
     # print(books_data["Title"].iloc[115:125])
     # print(books_data[books_data["Title"]=="World in Eclipse"])

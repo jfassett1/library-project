@@ -15,7 +15,7 @@ def construct_query(
     ):
     query = """SELECT bookdata.Title, book.Status
     FROM bookdata
-    NATURAL JOIN book
+    JOIN book ON book.BookID = bookdata.BookID
     WHERE 1
     """
     # , author.Name
@@ -53,7 +53,7 @@ def construct_query(
 
         # Fetch the results
         results = cursor.fetchall()
-    return results, query
+    return results, query, search_params
 
 def homepage(request):
     form = SearchForm()
@@ -81,7 +81,7 @@ def search(request):
         advanced_search["category.CategoryName"] = form.cleaned_data['genre']
         advanced_search["book.Status"] = form.cleaned_data['in_stock']
         advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
-        results, query = construct_query(search_query, advanced_search, 1, 50)
+        results, *query = construct_query(search_query, advanced_search, 1, 50)
         # query = "SELECT BookData. FROM BookData LEFT JOIN Author ON BookData.BookID = Author.BookID"
         # if 'raw_search' in fields:
         #     query += "WHERE  IN ()"

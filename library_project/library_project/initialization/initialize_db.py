@@ -124,9 +124,9 @@ def initialize():
     # read and insert book data
     books_data = populate_books.read_books_data()
     insert("patron","Name, Address, Email",values)
-    insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
-    insert("bookdata","Title, PublishDate, Publisher, Description", populate_books.create_book_data(books_data))
     insert("category","CategoryID, CategoryName", populate_books.extract_categorical_book_data(books_data, "categories"))
+    insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
+    insert("bookdata","Title, PublishDate, Publisher, Category, Description", populate_books.create_book_data(books_data))
     insert("book","DecimalCode, BookID, Status", populate_books.generate_library(books_data))
     # NOTE: For the author table https://medium.com/@akaivdo/pandas-how-to-convert-a-multi-value-column-to-multiple-rows-75c8d4cc2f4a
 
