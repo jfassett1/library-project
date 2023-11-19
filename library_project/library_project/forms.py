@@ -15,5 +15,5 @@ class SearchForm(forms.Form):
         initial='Reserved',
         required=False # Set the default choice here
     )
-    isbn = forms.CharField(label="ISBN", max_length=13, required=False)
+    # isbn = forms.CharField(label="ISBN", max_length=13, required=False)
     decimal_code = forms.CharField(label="Decimal Code", max_length=12, required=False)

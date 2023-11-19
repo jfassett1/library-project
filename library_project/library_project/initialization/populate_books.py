@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import pathlib
 import os
 
@@ -24,6 +25,23 @@ def create_book_data(book_data:pd.DataFrame):
 def create_author_data(book_data:pd.DataFrame):
     # TODO: #6 Insert author data into a table
     return books_data
+
+
+def generate_library(book_data:pd.DataFrame)->tuple[tuple,...]:
+    def append_period_and_copy_number(group):
+        group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("DecimalCode").cumcount().astype(str)
+        return group
+    # SAMPLE_SIZE = 50
+    sample = book_data.groupby("categories").sample(frac=0.10, replace=True, weights=book_data["ratingsCount"]+1)["categories"]
+    status = np.random.randint(0, 3, len(sample))
+    category_codes = pd.Categorical(sample).codes
+    codes = category_codes.astype(str)
+    books = pd.DataFrame({ "DecimalCode":codes,"BookID":sample.index,"BookStatus":status})
+    books["DecimalCode"] += "."
+    books["DecimalCode"] += books["BookID"].astype(str)
+    books =  books.groupby("DecimalCode").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
+    books = books.reset_index().drop(["DecimalCode", "level_1"], axis=1).rename({"newDecimalCode":"DecimalCode"}, axis=1)
+    return tuple(books.itertuples(index=False, name=None))
 
 def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
     """Get codes for a categorical feature
@@ -61,7 +79,8 @@ def read_books_data():
             "publisher":lambda x: auto_truncate(x, 50),
             "Title":lambda x: auto_truncate(x, 255),
             "categories": lambda x: x[2:-2],
-            }
+            },
+        nrows=1000
         )
 
     books_data = books_data.drop_duplicates(subset = "Title")
@@ -73,6 +92,7 @@ def read_books_data():
     books_data["publisher"] = pd.Categorical(books_data["publisher"])
     books_data["categories"] = pd.Categorical(books_data["categories"])
     books_data = books_data.where(pd.notnull(books_data), None)
+    books_data["ratingsCount"] = books_data["ratingsCount"].fillna(0)
     # books_data = books_data.dropna(axis=0)
 
     return books_data
@@ -80,7 +100,8 @@ def read_books_data():
 if __name__ == "__main__":
 
     books_data = read_books_data()
-    print(books_data["categories"])
+    print(generate_library(books_data))
+    # print(books_data["categories"])
     # print(books_data.isna().sum())
     # print(books_data["publishedDate"].min(),books_data["publishedDate"].max())
     # print(books_data.dtypes)

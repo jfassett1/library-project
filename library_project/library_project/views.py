@@ -5,7 +5,55 @@ from django.http import JsonResponse
 import MySQLdb
 from .forms import SearchForm
 import utils.select_query
+from .initialization.db_connect import get_cursor
 
+def construct_query(
+    search_term,
+    advanced_search_fields,
+    page_number:int,
+    results_per_page:int
+    ):
+    query = """SELECT bookdata.Title, book.Status
+    FROM bookdata
+    NATURAL JOIN book
+    WHERE 1
+    """
+    # , author.Name
+    # LEFT JOIN author ON bookdata.BookID = author.BookID
+
+    search_params = []
+    # Add search term condition
+    if search_term:
+        query += """
+            AND (
+                bookdata.Title LIKE %s
+                OR bookdata.Description LIKE %s
+            )
+        """
+        # OR author.Name LIKE %s
+        search_params.extend([f"%{search_term}%"]*2)
+
+    # Add advanced search conditions
+    for field, value in filter(lambda x: x[1] != '', advanced_search_fields.items()):
+        query += f" AND {field} = %s"
+        search_params.append(value)
+
+    # Add pagination
+    offset = (page_number - 1) * results_per_page
+    query += f" LIMIT {results_per_page} OFFSET {offset}"
+    # return query, search_params
+
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+
+        if search_term or advanced_search_fields:
+            cursor.execute(query, search_params)
+        else:
+            cursor.execute(query)
+
+        # Fetch the results
+        results = cursor.fetchall()
+    return results, query
 
 def homepage(request):
     form = SearchForm()
@@ -26,13 +74,21 @@ def search(request):
         # author = form.cleaned_data['author']
         # genre = form.cleaned_data['genre']
         # in_stock = form.cleaned_data['in_stock']
-        # isbn = form.cleaned_data['isbn']
         # decimal_code = form.cleaned_data['decimal_code']
-        query = "SELECT BookData. FROM BookData LEFT JOIN Author ON BookData.ISBN = Author.ISBN"
-        if 'raw_search' in fields:
-            query += "WHERE  IN ()"
-        data = str(form.cleaned_data)
-        return render(request, "search.html", {"form_data":data, "good":fields})
+        search_query = form.cleaned_data['raw_search']
+        advanced_search = {}
+        advanced_search["author.Name"] = form.cleaned_data['author']
+        advanced_search["category.CategoryName"] = form.cleaned_data['genre']
+        advanced_search["book.Status"] = form.cleaned_data['in_stock']
+        advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
+        results, query = construct_query(search_query, advanced_search, 1, 50)
+        # query = "SELECT BookData. FROM BookData LEFT JOIN Author ON BookData.BookID = Author.BookID"
+        # if 'raw_search' in fields:
+        #     query += "WHERE  IN ()"
+        # data = str(form.cleaned_data)
+        data = query
+        print(results)
+        return render(request, "search.html", {"form_data":data, "good":fields, "results":results})
     return render(request, "search.html")
 
 

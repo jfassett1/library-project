@@ -6,5 +6,27 @@
     <div class="container">
         <p> {{form_data}} </p>
         <p> {{good}} </p>
+    {% if results %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Author</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                    <tr>
+                        <td>{{ result.0 }}</td>  <!-- Title -->
+                        <td>{{ result.1 }}</td>  <!-- Status -->
+                        <td>{{ result.2 }}</td>  <!-- Author -->
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No results found.</p>
+    {% endif %}
     </div>
 {% endblock %}
