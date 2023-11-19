@@ -3,6 +3,19 @@ import numpy as np
 import pathlib
 import os
 
+def auto_truncate(val, length:int):
+    """
+    Truncate subscriptable input
+
+    Args:
+        val (Subscriptable): Object to be truncated
+        length (int): Max Object Length
+
+    Returns:
+        Subscriptable: Truncated object
+    """
+    return val[:length]
+
 def create_book_data(book_data:pd.DataFrame):
     """prepare book data for insertion
 
@@ -31,14 +44,13 @@ def generate_library(book_data:pd.DataFrame)->tuple[tuple,...]:
     def append_period_and_copy_number(group):
         group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("DecimalCode").cumcount().astype(str)
         return group
-    # SAMPLE_SIZE = 50
     sample = book_data.groupby("categories").sample(frac=0.10, replace=True, weights=book_data["ratingsCount"]+1)["categories"]
     status = np.random.randint(0, 3, len(sample))
     category_codes = pd.Categorical(sample).codes
     codes = category_codes.astype(str)
     books = pd.DataFrame({ "DecimalCode":codes,"BookID":sample.index,"BookStatus":status})
     books["DecimalCode"] += "."
-    books["DecimalCode"] += books["BookID"].astype(str)
+    books["DecimalCode"] += books["BookID"].astype(str).apply(lambda x: auto_truncate(x, 5))
     books =  books.groupby("DecimalCode").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
     books = books.reset_index().drop(["DecimalCode", "level_1"], axis=1).rename({"newDecimalCode":"DecimalCode"}, axis=1)
     return tuple(books.itertuples(index=False, name=None))
@@ -56,18 +68,6 @@ def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
     data = book_data[column_name].unique()
     return tuple(zip( pd.Categorical(data).codes, data))
 
-def auto_truncate(val, length:int):
-    """
-    Truncate subscriptable input
-
-    Args:
-        val (Subscriptable): Object to be truncated
-        length (int): Max Object Length
-
-    Returns:
-        Subscriptable: Truncated object
-    """
-    return val[:length]
 
 
 def read_books_data():
@@ -80,7 +80,7 @@ def read_books_data():
             "Title":lambda x: auto_truncate(x, 255),
             "categories": lambda x: x[2:-2],
             },
-        nrows=1000
+        nrows=100_000
         )
 
     books_data = books_data.drop_duplicates(subset = "Title")
@@ -100,7 +100,8 @@ def read_books_data():
 if __name__ == "__main__":
 
     books_data = read_books_data()
-    print(generate_library(books_data))
+    print(books_data.head())
+    # print(generate_library(books_data))
     # print(books_data["categories"])
     # print(books_data.isna().sum())
     # print(books_data["publishedDate"].min(),books_data["publishedDate"].max())

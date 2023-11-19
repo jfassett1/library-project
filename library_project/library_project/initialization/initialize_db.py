@@ -9,10 +9,9 @@ list_of_tables = [
     "patron",
     "publisher",
     "bookdata",
+    "category",
     "book",
     "author",
-    "categorynames",
-    "bookcategory",
     "checkout",
     "distance",
     "elevator"
@@ -35,7 +34,7 @@ CREATE TABLE publisher (
 queries.append("""
 CREATE TABLE category (
     CategoryID INT PRIMARY KEY,
-    CategoryName VARCHAR(35) NOT NULL
+    CategoryName TEXT NOT NULL
 );""")
 queries.append("""
 CREATE TABLE bookdata (
@@ -48,7 +47,7 @@ CREATE TABLE bookdata (
 );""")
 queries.append("""
 CREATE TABLE book (
-    DecimalCode CHAR(12) PRIMARY KEY,
+    DecimalCode VARCHAR(15) PRIMARY KEY,
     BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
 );""")
