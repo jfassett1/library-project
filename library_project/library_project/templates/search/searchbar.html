@@ -1,0 +1,8 @@
+<div class="container">
+    <form method="POST" action="{% url 'search-page' %}">
+
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Submit</button>
+    </form>
+</div>

@@ -18,8 +18,9 @@ def construct_query(
     page_number:int,
     results_per_page:int
     ):
-    query = """SELECT bookdata.Title
+    query = """SELECT bookdata.BookID, bookdata.Title, publisher.PublisherName
     FROM bookdata
+    NATURAL JOIN publisher, category
     WHERE  MATCH (bookdata.Title, bookdata.Description)
     AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
     """
@@ -54,6 +55,24 @@ def construct_query(
         results = cursor.fetchall()
     return results, query, search_params
 
+def get_book_details(bookid):
+    query = """
+    SELECT (
+        bookdata.Title, category.CategoryName, GROUP_CONCAT(author.Name),
+        MIN(book.Status), bookdata.Description, publisher.PublisherName
+    )
+    FROM book
+    NATURAL LEFT JOIN bookdata, category, author, publisher
+    WHERE book.BookID = %s
+    GROUP BY book.BookID"""
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        cursor.execute(query)
+
+        # Fetch the results
+        results = cursor.fetchall()
+    return results
+
 def homepage(request):
     form = SearchForm()
     return render(request, "home.html", {"form":form})
@@ -63,10 +82,8 @@ def search(request):
         form = SearchForm(request.POST)
 
         # check whether it's valid:
-        if form.is_valid():
-            fields = {k:v for k,v in filter(lambda x: x[1] != '', form.cleaned_data.items())}
-        else:
-            fields = {}
+        if not form.is_valid():
+            return render(request, "search/search.html")
 
         # Construct the query based on form data
         search_query = form.cleaned_data['raw_search']
@@ -78,11 +95,18 @@ def search(request):
         advanced_search["bookdata.Title"] = form.cleaned_data['title']
         results, query, qfields = construct_query(search_query, advanced_search, 1, 50)
 
+        ultimate_res = {}
+        for k, v in zip(["bookid", "title", "publisher"], results):
+            ultimate_res[k] = v
+
         data = query, qfields
         # print(results)
-        return render(request, "search.html", {"form_data":data, "good":fields, "results":results})
-    return render(request, "search.html")
+        return render(request, "search/search.html", {"form":form, "SQLquery":data, "results":ultimate_res})
+    return render(request, "search/search.html")
 
+def detailed_results(request, bookid):
+    results = get_book_details(bookid)
+    return render(request, "search/deatails.html", results)
 
 def landing(request):
     return render(request,"landing.html")
