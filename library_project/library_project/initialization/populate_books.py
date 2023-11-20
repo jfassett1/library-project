@@ -49,6 +49,8 @@ def format_author_data(book_data:pd.DataFrame):
     authors = book_data[["authors"]].copy()
     #Changes index to default incremental
     authors.reset_index(inplace=True)
+    authors.index +=1
+
     authors.fillna('["Unknown"]',inplace=True)
     #Turns string representations of list into actual list
     authors['authors'] = authors['authors'].apply(lambda x: eval(x))
@@ -113,6 +115,12 @@ def read_books_data():
     books_data["categories"] = pd.Categorical(books_data["categories"])
     books_data = books_data.where(pd.notnull(books_data), None)
     books_data["ratingsCount"] = books_data["ratingsCount"].fillna(0)
+    # books_data = books_data.dropna(axis=0)
+    #drops first row
+
+    books_data.sort_values(by='Title',inplace=True)
+    # books_data = books_data.iloc[1:, :]
+
     # books_data = books_data.dropna(axis=0)
 
     return books_data
