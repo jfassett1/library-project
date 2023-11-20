@@ -51,10 +51,11 @@ CREATE TABLE book (
     BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
 );""")
+#Had to up Name length because of books written by long names by US agencies
 queries.append("""
 CREATE TABLE author (
     BookID INT REFERENCES bookdata(BookID),
-    Name VARCHAR(50) DEFAULT 'UNKNOWN',
+    Name VARCHAR(200) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, Name)
 );""")
 
@@ -91,13 +92,14 @@ def create_table(queries):
         conn.commit()
 
 
-def insert(table:str, fields:str, values:tuple[tuple, ...]):
+def insert(table:str, fields:str, values:tuple[tuple, ...],additional:str=""):
 
     with MySQLdb.connect("db") as conn:
 
         cursor = get_cursor(conn)
         placeholders = ', '.join(['%s'] * len(fields.split(',')))
-        query = f"INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+        query = f"INSERT INTO {table} ({fields}) VALUES ({placeholders}){additional}"
+        print(query)
         try:
             cursor.executemany(query, values)
         except MySQLdb.Error as e:
@@ -128,8 +130,7 @@ def initialize():
     insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
     insert("bookdata","Title, PublishDate, Publisher, Category, Description", populate_books.create_book_data(books_data))
     insert("book","DecimalCode, BookID, Status", populate_books.generate_library(books_data))
-    # NOTE: For the author table https://medium.com/@akaivdo/pandas-how-to-convert-a-multi-value-column-to-multiple-rows-75c8d4cc2f4a
-
+    insert("author","BookID, Name",populate_books.format_author_data(books_data)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
 #Main
 if __name__ == "__main__":
     initialize()

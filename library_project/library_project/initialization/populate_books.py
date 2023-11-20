@@ -35,9 +35,29 @@ def create_book_data(book_data:pd.DataFrame):
         )
     )
 
-def create_author_data(book_data:pd.DataFrame):
-    # TODO: #6 Insert author data into a table
-    return books_data
+def format_author_data(book_data:pd.DataFrame):
+    """formats author data
+
+    Args:
+        book_data (pd.Dataframe): Book info dataframe with 'authors' column
+    
+    Returns:
+        tuple: Authors & BookIDs
+    
+    
+    """
+    authors = book_data[["authors"]].copy()
+    #Changes index to default incremental
+    authors.reset_index(inplace=True)
+    authors.fillna('["Unknown"]',inplace=True)
+    #Turns string representations of list into actual list
+    authors['authors'] = authors['authors'].apply(lambda x: eval(x))
+    #Creates duplicate rows for each author of a book, keeps proper index
+    exploded_authors = authors.explode("authors")
+    return tuple(zip(
+        exploded_authors.index,
+        exploded_authors['authors']
+    ))
 
 
 def generate_library(book_data:pd.DataFrame)->tuple[tuple,...]:
