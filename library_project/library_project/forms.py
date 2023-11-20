@@ -2,7 +2,8 @@ from django import forms
 
 class SearchForm(forms.Form):
     OPTIONS = ((0,"In stock"), (1,"Out of stock",), (2,"Reserved"))
-    raw_search = forms.CharField(label="Search", max_length=100, required=True)
+    raw_search = forms.CharField(label="Search", max_length=100, required=False)
+    title = forms.CharField(label="Title", max_length=100, required=False)
     # date_filter_lower = forms.DateField(label="Start Date", widget=forms.DateInput(attrs={'type': 'date'}))
     # date_filter_upper = forms.DateField(label="End Date", widget=forms.DateInput(attrs={'type': 'date'}))
     author = forms.CharField(label="Author", max_length=60, required=False)

@@ -7,15 +7,20 @@ from .forms import SearchForm
 import utils.select_query
 from .initialization.db_connect import get_cursor
 
+
+# BOOK_STATUS = { "":2,"In stock":0,
+# "Out of stock":1,
+# "Reserved":2 }
+
 def construct_query(
     search_term,
     advanced_search_fields,
     page_number:int,
     results_per_page:int
     ):
-    query = """SELECT bookdata.Title, book.Status
-    FROM bookdata
-    JOIN book ON book.BookID = bookdata.BookID
+    query = """SELECT DISTINCT bookdata.Title, book.Status
+    FROM book
+    NATURAL JOIN bookdata, category, publisher
     WHERE 1
     """
     # , author.Name
@@ -34,13 +39,17 @@ def construct_query(
         search_params.extend([f"%{search_term}%"]*2)
 
     # Add advanced search conditions
-    for field, value in filter(lambda x: x[1] != '', advanced_search_fields.items()):
-        query += f" AND {field} = %s"
+    for field, value in filter(lambda x: x[1] != '' and x[0] != "book.Status", advanced_search_fields.items()):
+        query += f" AND {field} LIKE %s"
         search_params.append(value)
 
+    status = advanced_search_fields["book.Status"] if advanced_search_fields["book.Status"] != '' else 2
+    query += f"AND book.Status <= {status}\n"
+    # query += "GROUP BY book.BookID\n"
     # Add pagination
     offset = (page_number - 1) * results_per_page
     query += f" LIMIT {results_per_page} OFFSET {offset}"
+
     # return query, search_params
 
     with MySQLdb.connect("db") as conn:
@@ -81,12 +90,13 @@ def search(request):
         advanced_search["category.CategoryName"] = form.cleaned_data['genre']
         advanced_search["book.Status"] = form.cleaned_data['in_stock']
         advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
-        results, *query = construct_query(search_query, advanced_search, 1, 50)
+        advanced_search["bookdata.Title"] = form.cleaned_data['title']
+        results, query, qfields = construct_query(search_query, advanced_search, 1, 50)
         # query = "SELECT BookData. FROM BookData LEFT JOIN Author ON BookData.BookID = Author.BookID"
         # if 'raw_search' in fields:
         #     query += "WHERE  IN ()"
         # data = str(form.cleaned_data)
-        data = query
+        data = query, qfields
         print(results)
         return render(request, "search.html", {"form_data":data, "good":fields, "results":results})
     return render(request, "search.html")
