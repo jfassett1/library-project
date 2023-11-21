@@ -3,6 +3,13 @@
 {% block title %}eLib - Home{% endblock %}
 
 {% block body %}
-{% include 'search/searchbar.html' %}
-
+{% comment %} {% include 'search/searchbar.html' %} {% endcomment %}
+<div class="container">
+    <div><strong>Title: </strong>{{results.title}}</div>
+    <div><strong>Author(s): </strong>{{results.authors}}</div>
+    <div><strong>Category: </strong>{{results.category}}</div>
+    <div><strong>Publisher: </strong>{{results.publisher}}</div>
+    <div><strong>Year of Publication: </strong>{{results.publishdate}}</div>
+    <div><strong>Description: </strong>{{results.description}}</div>
+</div>
 {% endblock %}

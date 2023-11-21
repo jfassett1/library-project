@@ -5,12 +5,12 @@ from django.http import JsonResponse
 import MySQLdb
 from .forms import SearchForm
 from .initialization.db_connect import get_cursor
+from utils.general import keys_values_to_dict
 import logging
 logger = logging.getLogger('django')
 # BOOK_STATUS = { "":2,"In stock":0,
 # "Out of stock":1,
 # "Reserved":2 }
-GARBAGE_TERMS = set()
 
 def construct_query(
     search_term,
@@ -18,15 +18,20 @@ def construct_query(
     page_number:int,
     results_per_page:int
     ):
-    query = """SELECT bookdata.BookID, bookdata.Title, publisher.PublisherName
-    FROM bookdata
-    NATURAL JOIN publisher, category
-    WHERE  MATCH (bookdata.Title, bookdata.Description)
-    AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
+    query = """
+    SELECT
+        bookdata.BookID, bookdata.Title, publisher.PublisherName
+    FROM
+        bookdata
+        NATURAL LEFT JOIN publisher, category
+    WHERE
+        MATCH (bookdata.Title, bookdata.Description)
+            AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
     """
     search_params = [search_term]
     # NATURAL JOIN author, category, publisher
-
+    #    LEFT JOIN publisher ON publisher.PublisherID = bookdata.Publisher
+    # LEFT JOIN category ON category.CategoryID = bookdata.Category
     # Add advanced search conditions
     for field, value in filter(lambda x: x[1] != '' and x[0] != "book.Status", advanced_search_fields.items()):
         query += f" AND {field} LIKE %s"
@@ -53,25 +58,59 @@ def construct_query(
 
         # Fetch the results
         results = cursor.fetchall()
+
+    print(*results, sep="\n")
     return results, query, search_params
 
-def get_book_details(bookid):
+def get_book_details(bookid:int):
+    print(bookid, type(bookid))
+
     query = """
-    SELECT (
-        bookdata.Title, category.CategoryName, GROUP_CONCAT(author.Name),
-        MIN(book.Status), bookdata.Description, publisher.PublisherName
-    )
-    FROM book
-    NATURAL LEFT JOIN bookdata, category, author, publisher
-    WHERE book.BookID = %s
-    GROUP BY book.BookID"""
+    SELECT
+        bd.Title AS 'Book Title',
+        GROUP_CONCAT(a.Name) AS 'Authors',
+        c.CategoryName AS 'Category Name',
+        p.PublisherName AS 'Publisher Name',
+        bd.PublishDate AS 'Publish Date',
+        MIN(b.Status) AS 'Minimum Status',
+        bd.Description AS 'Description',
+        COUNT(*) AS 'Number of Copies'
+    FROM
+        bookdata bd
+        JOIN book b ON bd.BookID = b.BookID
+        JOIN category c ON bd.CategoryID = c.CategoryID
+        JOIN publisher p ON bd.PublisherID = p.PublisherID
+        LEFT JOIN author a ON bd.BookID = a.BookID
+    WHERE
+        bd.BookID = %s
+    GROUP BY
+        bd.BookID;
+
+    """
+    query = """
+    SELECT
+        bd.Title AS 'Book Title',
+        GROUP_CONCAT(a.Name) AS 'Author',
+        c.CategoryName AS 'Category Name',
+        p.PublisherName AS 'Publisher Name',
+        bd.PublishDate AS 'Publish Date',
+        bd.Description AS 'Description'
+    FROM
+        bookdata bd
+        JOIN publisher p ON p.PublisherID = bd.PublisherID
+        JOIN category c ON c.CategoryID = bd.CategoryID
+        LEFT JOIN author a ON bd.BookID = a.BookID
+    WHERE
+        bd.BookID = %s;
+    """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
-        cursor.execute(query)
+        cursor.execute(query, (bookid,))
 
         # Fetch the results
         results = cursor.fetchall()
-    return results
+
+    return keys_values_to_dict(["title",  "authors", "category", "publisher","publishdate","description"],results[0])
 
 def homepage(request):
     form = SearchForm()
@@ -95,18 +134,14 @@ def search(request):
         advanced_search["bookdata.Title"] = form.cleaned_data['title']
         results, query, qfields = construct_query(search_query, advanced_search, 1, 50)
 
-        ultimate_res = {}
-        for k, v in zip(["bookid", "title", "publisher"], results):
-            ultimate_res[k] = v
-
         data = query, qfields
         # print(results)
-        return render(request, "search/search.html", {"form":form, "SQLquery":data, "results":ultimate_res})
+        return render(request, "search/search.html", {"form":form, "SQLquery":data, "results":results})
     return render(request, "search/search.html")
 
 def detailed_results(request, bookid):
     results = get_book_details(bookid)
-    return render(request, "search/deatails.html", results)
+    return render(request, "search/details.html", {"results":results})
 
 def landing(request):
     return render(request,"landing.html")

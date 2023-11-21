@@ -41,8 +41,8 @@ CREATE TABLE bookdata (
 	BookID INT PRIMARY KEY AUTO_INCREMENT,
 	Title VARCHAR(255) NOT NULL,
 	PublishDate INT,
-	Publisher INT REFERENCES publisher(PublisherID),
-    Category INT REFERENCES category(CategoryID),
+	PublisherID INT REFERENCES publisher(PublisherID),
+    CategoryID INT REFERENCES category(CategoryID),
 	Description TEXT,
     FULLTEXT idx (Title, Description)
 ) Engine = InnoDB;""")
@@ -59,13 +59,6 @@ CREATE TABLE author (
     Name VARCHAR(200) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, Name)
 );""")
-
-# queries.append("""
-# CREATE TABLE bookcategory (
-#     CategoryID INT REFERENCES categorynames(CategoryID),
-#     BookID INT REFERENCES bookdata(BookID),
-#     PRIMARY KEY (CategoryID, BookID)
-# );""")
 queries.append(
 """CREATE TABLE checkout (
     Patron INT REFERENCES patron(AccID),
@@ -129,7 +122,7 @@ def initialize():
     insert("patron","Name, Address, Email",values)
     insert("category","CategoryID, CategoryName", populate_books.extract_categorical_book_data(books_data, "categories"))
     insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
-    insert("bookdata","Title, PublishDate, Publisher, Category, Description", populate_books.create_book_data(books_data))
+    insert("bookdata","Title, PublishDate, PublisherID, CategoryID, Description", populate_books.create_book_data(books_data))
     insert("author","BookID, Name",populate_books.format_author_data(books_data)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     insert("book","DecimalCode, BookID, Status", populate_books.generate_library(books_data))
 #Main

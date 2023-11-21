@@ -18,8 +18,8 @@
             <tbody>
                 {% for result in results %}
                     <tr>
-                        <td><a href="{% url 'book-details' result.bookid %}">{{ result.title }}</a></td>  <!-- Title -->
-                        <td>{{ result.publisher }}</td>  <!-- publisher -->
+                        <td><a href="{% url 'book-details' result.0 %}">{{ result.1 }}</a></td>  <!-- Title -->
+                        <td>{{ result.2 }}</td>  <!-- publisher -->
 
                     </tr>
                 {% endfor %}
