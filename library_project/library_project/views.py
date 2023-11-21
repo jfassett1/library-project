@@ -7,6 +7,7 @@ from .forms import SearchForm
 from .initialization.db_connect import get_cursor
 from utils.general import keys_values_to_dict
 import logging
+
 logger = logging.getLogger('django')
 # BOOK_STATUS = { "":2,"In stock":0,
 # "Out of stock":1,
@@ -20,13 +21,13 @@ def construct_query(
     ):
     query = """
     SELECT
-        bd.BookID, bd.Title, p.PublisherName
+        bookdata.BookID, bookdata.Title, publisher.PublisherName
     FROM
-        bookdata bd
-        JOIN publisher p ON p.PublisherID = bd.PublisherID
-        JOIN category c ON c.CategoryID = bd.CategoryID
+        bookdata
+        JOIN publisher ON publisher.PublisherID = bookdata.PublisherID
+        JOIN category ON category.CategoryID = bookdata.CategoryID
     WHERE
-        MATCH (bd.Title, bd.Description)
+        MATCH (bookdata.Title, bookdata.Description)
             AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
     """
     search_params = [search_term]
