@@ -1,4 +1,5 @@
 import pandas as pd
+import random
 import numpy as np
 import pathlib
 import os
@@ -124,6 +125,111 @@ def read_books_data():
     # books_data = books_data.dropna(axis=0)
 
     return books_data
+
+
+#Start of decimal generation
+
+class Bookshelf:
+    def __init__(self,ind:int=0,category:str = 'Misc'):
+        self.category = category
+        self.bookshelfID = ind
+        self.full = False
+        self.subshelves = {
+            '01': [],
+            '02': [],
+            '03': [],
+            '04': [],
+            '05': [],
+            '06': [],
+            '07': [],
+        }
+    def append(self, bookID):
+        for shelf_number, books in self.subshelves.items():
+            if len(books) < 30:
+                books.append(bookID)
+                break
+        else:
+            self.full = True
+            return "Full"
+    def read(self):
+        print(f"Bookshelf: {self.bookshelfID}\nCategory: {self.category}")
+        for shelf in self.subshelves.values():
+            print(shelf)
+    def index(self):
+        finallist = []
+        b_id = f"{self.bookshelfID:03d}"
+        for subshelf,books in self.subshelves.items():
+            for book_id in books:
+                finallist.append((f"{b_id}-{subshelf}-{book_id}",book_id,random.randint(0,2)))
+        return finallist
+
+def populate_bookshelves(ids,startint=1,category:str='Misc'):
+    """Builds bookshelf data
+    Args: iterable of bookIDs
+
+
+    Returns: List of bookshelf objects
+    
+    
+    
+    
+    """
+    bookshelves = [Bookshelf(startint,category)]
+    next_bookshelf_id = startint + 1
+    for i in ids:
+        book_added = False
+        for bookshelf in bookshelves:
+            result = bookshelf.append(i)
+            if result is None: 
+                book_added = True
+                break
+
+        if not book_added:
+            # If all bookshelves are full, create a new bookshelf
+            new_bookshelf = Bookshelf(next_bookshelf_id)
+            new_bookshelf.category = category
+            bookshelves.append(new_bookshelf)
+            new_bookshelf.append(i)  # Add the book to the new bookshelf
+            # print(f"Created Bookshelf{len(bookshelves)} for book {i}")
+            next_bookshelf_id += 1
+
+    return bookshelves
+
+def generate_shelf_decimal(books_data):
+    books2 = books_data.copy()
+    books2.replace("","Misc",inplace=True)
+    grouped = books2.groupby(by='categories')
+    library = []
+    misc_cats = []
+
+    startint = True
+    for cat,group in grouped:
+        if len(group) <= 200:
+            misc_cats.append(cat)
+        else:
+
+            if startint:
+                library.extend(populate_bookshelves(group.index,category=cat))
+                startint = False
+            else:
+                library.extend(populate_bookshelves(group.index,startint=len(library)+1,category=cat))
+
+    last_int = library[-1].bookshelfID
+
+    misc = books2[books2['categories'].isin(misc_cats)]
+    library.extend(populate_bookshelves(misc.index,startint=last_int,category="Misc",))
+
+
+    indices = []
+    for bookshelf in library:
+        indices.extend(bookshelf.index())
+    print(f"Generating {len(library)} bookshelves containing {len(indices)} books")
+
+    # for bookshelf in library:
+    #     print(f"Bookshelf ID: {bookshelf.bookshelfID}")  
+    return tuple(indices)
+
+
 
 if __name__ == "__main__":
 
