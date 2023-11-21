@@ -20,12 +20,13 @@ def construct_query(
     ):
     query = """
     SELECT
-        bookdata.BookID, bookdata.Title, publisher.PublisherName
+        bd.BookID, bd.Title, p.PublisherName
     FROM
-        bookdata
-        NATURAL LEFT JOIN publisher, category
+        bookdata bd
+        JOIN publisher p ON p.PublisherID = bd.PublisherID
+        JOIN category c ON c.CategoryID = bd.CategoryID
     WHERE
-        MATCH (bookdata.Title, bookdata.Description)
+        MATCH (bd.Title, bd.Description)
             AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
     """
     search_params = [search_term]
@@ -80,7 +81,7 @@ def get_book_details(bookid:int):
         JOIN book b ON bd.BookID = b.BookID
         JOIN category c ON bd.CategoryID = c.CategoryID
         JOIN publisher p ON bd.PublisherID = p.PublisherID
-        LEFT JOIN author a ON bd.BookID = a.BookID
+        RIGHT JOIN author a ON bd.BookID = a.BookID
     WHERE
         bd.BookID = %s
     GROUP BY
@@ -99,7 +100,7 @@ def get_book_details(bookid:int):
         bookdata bd
         JOIN publisher p ON p.PublisherID = bd.PublisherID
         JOIN category c ON c.CategoryID = bd.CategoryID
-        LEFT JOIN author a ON bd.BookID = a.BookID
+        RIGHT JOIN author a ON bd.BookID = a.BookID
     WHERE
         bd.BookID = %s;
     """
