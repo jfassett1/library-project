@@ -5,25 +5,12 @@
 <head>
 <title>Librarian View</title>
 
-<script src = "{%static 'js/data_vis.js' %}">
+<!-- <script src = "{%static 'js/data_vis.js' %}"> -->
  
-    // $(function(){
-    //     $('#db_initialize').on('submit', function(e){
-    //         e.preventDefault();
-    //         $.ajax({
-    //             url: $(this).attr('action'),
-    //             method: $(this).attr('method'),
-    //             success: function(data){ $('#target').html(data) }
-    //         });
-    //     });
-
 </script>
 </head>
 <body>
 <h1>test</h1>
-<button onclick = "get_data('patron','{{ csrf_token }}')">Press for db test</button>
-
-
 
 <div id = "div1">
     {{ csrf_token }}

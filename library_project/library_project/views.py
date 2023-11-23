@@ -3,8 +3,9 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 # from . import initialize_db
 import MySQLdb
-from .forms import SearchForm
+from .forms import SearchForm, UpdateForm
 from .initialization.db_connect import get_cursor
+from .initialization.initialize_db import insert
 from utils.general import keys_values_to_dict
 import logging
 
@@ -168,6 +169,24 @@ def lib(request):
 def patron(request):
     return render(request,"patron.html")
 
+def update(request):
+    return render(request,"update/update.html")
+
+
+def add_row(request):
+    if request.method == "POST":
+        # If the form has been submitted, create a form instance with the POST data
+        form = UpdateForm(request.POST)
+        if form.is_valid():
+            # Form data is valid, so you can process and save it to the database
+            title = form.cleaned_data['title']
+            author = form.cleaned_data['author']
+            genre = form.cleaned_data['genre']
+            categoryID = form.cleaned_data['categoryID']
+            year = form.cleaned_data['year']
+
+
+
 
 def db_ping(request):
     # with MySQLdb.connect("db") as conn:
@@ -176,7 +195,7 @@ def db_ping(request):
         conn = MySQLdb.connect("db")
 
         cursor = conn.cursor()
-        query = "select * from library_project_patron"
+        query = "select * from patron"
         cursor.execute("use library")
         cursor.execute(query)
         conn.close()

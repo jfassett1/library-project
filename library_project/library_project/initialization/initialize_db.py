@@ -80,10 +80,12 @@ def create_table(queries):
                 cursor.execute(table)
             except MySQLdb.Error as e:
                 print(e)
+                return False
             else:
                 print("Created Succesfully!")
         # Execute the query for each set of values in the list
         conn.commit()
+        return True
 
 
 def insert(table:str, fields:str, values:tuple[tuple, ...],additional:str=""):
@@ -98,6 +100,7 @@ def insert(table:str, fields:str, values:tuple[tuple, ...],additional:str=""):
             cursor.executemany(query, values)
         except MySQLdb.Error as e:
             print(e)
+            return False
         else:
             conn.commit()
         # Execute the query for each set of values in the list
@@ -106,7 +109,9 @@ def insert(table:str, fields:str, values:tuple[tuple, ...],additional:str=""):
 
 def initialize():
     #Initializing tables
-    create_table(queries)
+    if not create_table(queries):
+        print("Initialization Failed, consider refreshing database?")
+        return
     #Building Patron accounts
     # n_patrons = int(input("How many people do you want?\n"))
     fake = Faker()
@@ -119,6 +124,8 @@ def initialize():
 
     # read and insert book data
     books_data = populate_books.read_books_data()
+    # sample = books_data.groupby("categories").sample(frac=0.10, replace=True, weights=book_data["ratingsCount"]+1)["categories"]
+
     insert("patron","Name, Address, Email",values)
     insert("category","CategoryID, CategoryName", populate_books.extract_categorical_book_data(books_data, "categories"))
     insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
@@ -126,6 +133,7 @@ def initialize():
     insert("author","BookID, Name",populate_books.format_author_data(books_data)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert("book","DecimalCode, BookID, Status", populate_books.generate_library(books_data))
     insert("book","DecimalCode, BookID, Status", populate_books.generate_shelf_decimal(books_data))
+    print("Initialization Complete!")
 #Main
 if __name__ == "__main__":
     initialize()

@@ -19,3 +19,11 @@ class SearchForm(forms.Form):
     # isbn = forms.CharField(label="ISBN", max_length=13, required=False)
     decimal_code = forms.CharField(label="Decimal Code", max_length=12, required=False)
     page = forms.IntegerField(min_value=1, widget=forms.HiddenInput(),initial=1)
+
+
+class UpdateForm(forms.Form):
+    title = forms.CharField(label="Title", max_length=100, required=True)
+    author = forms.CharField(label="Author", max_length=60, required=False)
+    genre = forms.CharField(label="Genre", max_length="20", required=False)
+    categoryID = forms.IntegerField(label="CategoryID",min_value=0,max_value=10000)
+    year = forms.IntegerField(label="Year of Publication",min_value=0,max_value=2100)

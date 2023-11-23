@@ -1,9 +1,8 @@
 import pandas as pd
-import random
 import numpy as np
 import pathlib
 import os
-
+rng = np.random.default_rng(8)
 def auto_truncate(val, length:int):
     """
     Truncate subscriptable input
@@ -145,7 +144,8 @@ class Bookshelf:
         }
     def append(self, bookID):
         for shelf_number, books in self.subshelves.items():
-            if len(books) < 30:
+            shelfspace = rng.integers(20,31)
+            if len(books) < shelfspace:
                 books.append(bookID)
                 break
         else:
@@ -160,10 +160,10 @@ class Bookshelf:
         b_id = f"{self.bookshelfID:03d}"
         for subshelf,books in self.subshelves.items():
             for book_id in books:
-                finallist.append((f"{b_id}-{subshelf}-{book_id}",book_id,random.randint(0,2)))
+                finallist.append((f"{b_id}-{subshelf}-{book_id}",book_id,rng.integers(0,3)))
         return finallist
 
-def populate_bookshelves(ids,startint=1,category:str='Misc'):
+def populate_bookshelves(ids,startint=1,category:str='Misc')->list:
     """Builds bookshelf data
     Args: iterable of bookIDs
 

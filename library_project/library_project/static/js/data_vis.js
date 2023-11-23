@@ -5,10 +5,10 @@ function parseResponse(data){
     jsonLike = jsonLike.replace(/'/g, '"');
     // console.log(jsonLike);
     let result = JSON.parse(jsonLike);
-    const arrayOfJSON = result.map(([id, name, username, email]) => ({
+    const arrayOfJSON = result.map(([id, name, address, email]) => ({
                              id,
                              name,
-                             username,
+                             address,
                              email
     }));
     console.log(arrayOfJSON);
@@ -22,7 +22,7 @@ const table = document.createElement('table');
 
 const headerRow = document.createElement('tr');
 
-const headers = ['ID', 'Name', 'Username', 'Email'];
+const headers = ['ID', 'Name', 'Address', 'Email'];
 
 // Loop through the headers and create header cells
 headers.forEach(headerText => {
@@ -38,7 +38,7 @@ table.appendChild(headerRow);
 parseddata.forEach(element => {
     const row = document.createElement('tr');
 
-    // Create data cells for each property (id, name, username, email)
+    // Create data cells for each property (id, name, address, email)
     const idCell = document.createElement('td');
     idCell.textContent = element.id;
     row.appendChild(idCell);
@@ -47,9 +47,9 @@ parseddata.forEach(element => {
     nameCell.textContent = element.name;
     row.appendChild(nameCell);
 
-    const usernameCell = document.createElement('td');
-    usernameCell.textContent = element.username;
-    row.appendChild(usernameCell);
+    const addressCell = document.createElement('td');
+    addressCell.textContent = element.address;
+    row.appendChild(addressCell);
 
     const emailCell = document.createElement('td');
     emailCell.textContent = element.email;
