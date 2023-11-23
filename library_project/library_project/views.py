@@ -21,24 +21,27 @@ def construct_query(
     ):
     query = """
     SELECT
-        bookdata.BookID, bookdata.Title, publisher.PublisherName
+        bookdata.BookID, bookdata.Title, publisher.PublisherName, COUNT(*)
     FROM
         bookdata
         JOIN publisher ON publisher.PublisherID = bookdata.PublisherID
         JOIN category ON category.CategoryID = bookdata.CategoryID
+        RIGHT JOIN author on bookdata.BookID = author.BookID
     WHERE
-        MATCH (bookdata.Title, bookdata.Description)
-            AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
+        1
     """
-    search_params = [search_term]
-    # NATURAL JOIN author, category, publisher
-    #    LEFT JOIN publisher ON publisher.PublisherID = bookdata.Publisher
-    # LEFT JOIN category ON category.CategoryID = bookdata.Category
+    search_params = []
+    if search_term:
+
+        query += """    AND MATCH (bookdata.Title, bookdata.Description)
+            AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)"""
+        search_params.append(search_term)
+
     # Add advanced search conditions
     for field, value in filter(lambda x: x[1] != '' and x[0] != "book.Status", advanced_search_fields.items()):
         query += f" AND {field} LIKE %s"
         search_params.append(f"%{value}%")
-
+    query += "\nGROUP BY bookdata.BookID"
     # status = advanced_search_fields["book.Status"] if advanced_search_fields["book.Status"] != '' else 2
     # query += f"AND book.Status <= {status}\n"
     # query += "GROUP BY book.BookID\nHAVING MIN(book.Status) <= %s"
@@ -62,6 +65,7 @@ def construct_query(
         results = cursor.fetchall()
 
     print(*results, sep="\n")
+
     return results, query, search_params
 
 def get_book_details(bookid:int):
@@ -119,8 +123,8 @@ def homepage(request):
     return render(request, "home.html", {"form":form})
 
 def search(request):
-    if request.method == "POST":
-        form = SearchForm(request.POST)
+    if request.method == "GET":
+        form = SearchForm(request.GET)
 
         # check whether it's valid:
         if not form.is_valid():
@@ -134,11 +138,21 @@ def search(request):
         advanced_search["book.Status"] = form.cleaned_data['in_stock']
         advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
         advanced_search["bookdata.Title"] = form.cleaned_data['title']
-        results, query, qfields = construct_query(search_query, advanced_search, 1, 50)
-
+        page = form.cleaned_data["page"]
+        results, query, qfields = construct_query(search_query, advanced_search, page, 50)
+        results_numbers = (page-1) * 50
         data = query, qfields
         # print(results)
-        return render(request, "search/search.html", {"form":form, "SQLquery":data, "results":results})
+        return render(
+            request,
+            "search/search.html",
+            {
+                "form":form,
+                "SQLquery":data,
+                "results":results,
+                "num_res":(results_numbers, results_numbers+ len(results))
+                }
+            )
     return render(request, "search/search.html")
 
 def detailed_results(request, bookid):

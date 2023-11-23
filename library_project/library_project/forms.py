@@ -18,3 +18,4 @@ class SearchForm(forms.Form):
     )
     # isbn = forms.CharField(label="ISBN", max_length=13, required=False)
     decimal_code = forms.CharField(label="Decimal Code", max_length=12, required=False)
+    page = forms.IntegerField(min_value=1, widget=forms.HiddenInput(),initial=1)

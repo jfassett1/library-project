@@ -1,8 +1,6 @@
 <div class="container">
-    <form method="POST" action="{% url 'search-page' %}">
-
-        {% csrf_token %}
+    <form id="searchForm" method="GET" action="{% url 'search-page'%}">
         {{ form.as_p }}
-        <button type="submit">Submit</button>
+        <button  type="submit">Submit</button>
     </form>
 </div>

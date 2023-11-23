@@ -1,18 +1,22 @@
 {% extends 'base.html' %}
+{% block head %}
 
+{%endblock%}
 {% block title %}eLib - Search Results{% endblock %}
 
 {% block body %}
     {% include 'search/searchbar.html' %}
     <div class="container">
-        <p> {{SQLquery}} </p>
+        <pre> {{SQLquery.0}} </pre>
     {% if results %}
+
+    <p> Showing results {{ num_res.0 }}-{{ num_res.1}} </p>
+
         <table>
             <thead>
                 <tr>
                     <th>Title</th>
-                    {% comment %} <th>Status</th>
-                    <th>Author</th> {% endcomment %}
+                    <th>Publisher</th>
                 </tr>
             </thead>
             <tbody>
@@ -20,13 +24,33 @@
                     <tr>
                         <td><a href="{% url 'book-details' result.0 %}">{{ result.1 }}</a></td>  <!-- Title -->
                         <td>{{ result.2 }}</td>  <!-- publisher -->
-
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     {% else %}
-        <p>No results found.</p>
+        <p id="noResults">No results found.</p>
     {% endif %}
+    <button type="button" onclick="previousPage()">Previous</button>
+    <button type="button" onclick="nextPage()">Next</button>
+    <script>
+        function previousPage() {
+            const pageField = document.getElementById('id_page');
+            pageField.value = Math.max(parseInt(pageField.value) - 1, 1);
+            document.getElementById('searchForm').submit();
+        }
+
+        function nextPage() {
+            const pageField = document.getElementById('id_page');
+            pageField.value = parseInt(pageField.value) + 1;
+            document.getElementById('searchForm').submit();
+        }
+        const pageField = document.getElementById('id_page');
+        if (pageField.value === 1) {
+            pageField.disabled = True
+        }
+
+    </script>
     </div>
+
 {% endblock %}
