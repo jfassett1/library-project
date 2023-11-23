@@ -10,7 +10,7 @@
         <pre> {{SQLquery.0}} </pre>
     {% if results %}
 
-    <p> Showing results {{ num_res.0 }}-{{ num_res.1}} </p>
+    <p> Showing results <strong id="resultsNumbers">{{ num_res.0 }}-{{ num_res.1}} </strong></p>
 
         <table>
             <thead>
@@ -31,24 +31,31 @@
     {% else %}
         <p id="noResults">No results found.</p>
     {% endif %}
-    <button type="button" onclick="previousPage()">Previous</button>
-    <button type="button" onclick="nextPage()">Next</button>
+    <button id="previousButton" type="button" onclick="previousPage()">Previous</button>
+    <button id="nextButton" type="button" onclick="nextPage()">Next</button>
     <script>
+        const urlParams = new URLSearchParams(queryString);
+        const pageNum = parseInt(urlParams.get("page"));
         function previousPage() {
             const pageField = document.getElementById('id_page');
-            pageField.value = Math.max(parseInt(pageField.value) - 1, 1);
+            pageField.value = Math.max(pageNum - 1, 1);
             document.getElementById('searchForm').submit();
         }
 
         function nextPage() {
             const pageField = document.getElementById('id_page');
-            pageField.value = parseInt(pageField.value) + 1;
+            pageField.value = pageNum + 1;
             document.getElementById('searchForm').submit();
         }
         const pageField = document.getElementById('id_page');
-        if (pageField.value === 1) {
-            pageField.disabled = True
+        if (pageField.value == 1) {
+            document.getElementById('previousButton').disabled = true;
         }
+        const [lower, upper] = document.getElementById('resultsNumbers').innerText.split("-");
+        if (parseInt(upper)-parseInt(lower) < 50 || document.getElementById("noResults") != null) {
+            document.getElementById('nextButton').disabled = true;
+        }
+
 
     </script>
     </div>

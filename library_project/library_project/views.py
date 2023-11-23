@@ -141,14 +141,17 @@ def search(request):
         page = form.cleaned_data["page"]
         results, query, qfields = construct_query(search_query, advanced_search, page, 50)
         results_numbers = (page-1) * 50
-        data = query, qfields
+
         # print(results)
+        temp = form.cleaned_data
+        temp["page"] = 1
+        new_form = SearchForm(temp)
         return render(
             request,
             "search/search.html",
             {
-                "form":form,
-                "SQLquery":data,
+                "form":new_form,
+                "SQLquery":query,
                 "results":results,
                 "num_res":(results_numbers, results_numbers+ len(results))
                 }
