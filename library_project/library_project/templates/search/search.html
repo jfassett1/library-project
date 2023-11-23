@@ -34,6 +34,7 @@
     <button id="previousButton" type="button" onclick="previousPage()">Previous</button>
     <button id="nextButton" type="button" onclick="nextPage()">Next</button>
     <script>
+        const queryString = window.location.search
         const urlParams = new URLSearchParams(queryString);
         const pageNum = parseInt(urlParams.get("page"));
         function previousPage() {
