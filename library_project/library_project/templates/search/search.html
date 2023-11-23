@@ -38,13 +38,11 @@
         const urlParams = new URLSearchParams(queryString);
         const pageNum = parseInt(urlParams.get("page"));
         function previousPage() {
-            const pageField = document.getElementById('id_page');
             pageField.value = Math.max(pageNum - 1, 1);
             document.getElementById('searchForm').submit();
         }
 
         function nextPage() {
-            const pageField = document.getElementById('id_page');
             pageField.value = pageNum + 1;
             document.getElementById('searchForm').submit();
         }
