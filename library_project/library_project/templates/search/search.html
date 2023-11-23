@@ -47,12 +47,16 @@
             document.getElementById('searchForm').submit();
         }
         const pageField = document.getElementById('id_page');
-        if (pageField.value == 1) {
+        if (pageNum === 1) {
             document.getElementById('previousButton').disabled = true;
+        } else {
+            document.getElementById('previousButton').disabled = false;
         }
         const [lower, upper] = document.getElementById('resultsNumbers').innerText.split("-");
         if (parseInt(upper)-parseInt(lower) < 50 || document.getElementById("noResults") != null) {
             document.getElementById('nextButton').disabled = true;
+        } else {
+            document.getElementById('nextButton').disabled = false;
         }
 
 
