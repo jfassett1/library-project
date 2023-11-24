@@ -21,7 +21,12 @@ def construct_query(
     ):
     query = """
     SELECT
-        bookdata.BookID, bookdata.Title, publisher.PublisherName, COUNT(*)
+        bookdata.BookID,
+        bookdata.Title,
+        GROUP_CONCAT(DISTINCT author.Name),
+        publisher.PublisherName,
+        COUNT(*) AS "num_copies",
+        MIN(book.Status)
     FROM
         bookdata
         JOIN publisher ON publisher.PublisherID = bookdata.PublisherID
@@ -68,6 +73,48 @@ def construct_query(
     print(*results, sep="\n")
 
     return results, query, search_params
+
+
+def homepage(request):
+    form = SearchForm()
+    return render(request, "home.html", {"form":form})
+
+def search(request):
+    if request.method == "GET":
+        form = SearchForm(request.GET)
+
+        # check whether it's valid:
+        if not form.is_valid():
+            return render(request, "search/search.html")
+
+        # Construct the query based on form data
+        search_query = form.cleaned_data['raw_search']
+        advanced_search = {}
+        advanced_search["author.Name"] = form.cleaned_data['author']
+        advanced_search["category.CategoryName"] = form.cleaned_data['genre']
+        advanced_search["book.Status"] = form.cleaned_data['in_stock']
+        advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
+        advanced_search["bookdata.Title"] = form.cleaned_data['title']
+        page = form.cleaned_data["page"]
+        results, query, qfields = construct_query(search_query, advanced_search, page, 50)
+        results_numbers = (page-1) * 50
+
+        # print(results)
+        temp = form.cleaned_data
+        temp["page"] = 1
+        new_form = SearchForm(temp)
+        return render(
+            request,
+            "search/search.html",
+            {
+                "form":new_form,
+                "SQLquery":query,
+                "results":results,
+                "num_res":(results_numbers, results_numbers+ len(results))
+                }
+            )
+    return render(request, "search/search.html")
+
 
 def get_book_details(bookid:int):
     print(bookid, type(bookid))
@@ -119,45 +166,6 @@ def get_book_details(bookid:int):
 
     return keys_values_to_dict(["title",  "authors", "category", "publisher","publishdate","description"],results[0])
 
-def homepage(request):
-    form = SearchForm()
-    return render(request, "home.html", {"form":form})
-
-def search(request):
-    if request.method == "GET":
-        form = SearchForm(request.GET)
-
-        # check whether it's valid:
-        if not form.is_valid():
-            return render(request, "search/search.html")
-
-        # Construct the query based on form data
-        search_query = form.cleaned_data['raw_search']
-        advanced_search = {}
-        advanced_search["author.Name"] = form.cleaned_data['author']
-        advanced_search["category.CategoryName"] = form.cleaned_data['genre']
-        advanced_search["book.Status"] = form.cleaned_data['in_stock']
-        advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
-        advanced_search["bookdata.Title"] = form.cleaned_data['title']
-        page = form.cleaned_data["page"]
-        results, query, qfields = construct_query(search_query, advanced_search, page, 50)
-        results_numbers = (page-1) * 50
-
-        # print(results)
-        temp = form.cleaned_data
-        temp["page"] = 1
-        new_form = SearchForm(temp)
-        return render(
-            request,
-            "search/search.html",
-            {
-                "form":new_form,
-                "SQLquery":query,
-                "results":results,
-                "num_res":(results_numbers, results_numbers+ len(results))
-                }
-            )
-    return render(request, "search/search.html")
 
 def detailed_results(request, bookid):
     results = get_book_details(bookid)

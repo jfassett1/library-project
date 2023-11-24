@@ -16,7 +16,10 @@
             <thead>
                 <tr>
                     <th>Title</th>
+                    <th>Author</th>
                     <th>Publisher</th>
+                    <th>Copies</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -24,6 +27,16 @@
                     <tr>
                         <td><a href="{% url 'book-details' result.0 %}">{{ result.1 }}</a></td>  <!-- Title -->
                         <td>{{ result.2 }}</td>  <!-- publisher -->
+                        <td>{{ result.3 }}</td>
+                        <td>{{ result.4 }}</td>
+                        {% if result.5 == 0 %}
+                            <td>In Stock</td>
+                        {% elif result.5 == 1 %}
+                            <td>Out of Stock</td>
+                        {% else%}
+                            <td>Reserved</td>
+                        {% endif%}
+
                     </tr>
                 {% endfor %}
             </tbody>
