@@ -49,7 +49,7 @@ CREATE TABLE bookdata (
 queries.append("""
 CREATE TABLE book (
     DecimalCode VARCHAR(15) PRIMARY KEY,
-    BookID INT REFERENCES bookdata(BookID),
+    BookID INT REFERENCES bookdata(BookID) NOT NULL,
     Status TINYINT NOT NULL
 );""")
 #Had to up Name length because of books written by long names by US agencies

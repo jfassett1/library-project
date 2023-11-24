@@ -27,6 +27,7 @@ def construct_query(
         JOIN publisher ON publisher.PublisherID = bookdata.PublisherID
         JOIN category ON category.CategoryID = bookdata.CategoryID
         RIGHT JOIN author on bookdata.BookID = author.BookID
+        RIGHT JOIN book ON bookdata.BookID = book.BookID
     WHERE
         1
     """
@@ -41,11 +42,11 @@ def construct_query(
     for field, value in filter(lambda x: x[1] != '' and x[0] != "book.Status", advanced_search_fields.items()):
         query += f" AND {field} LIKE %s"
         search_params.append(f"%{value}%")
-    query += "\nGROUP BY bookdata.BookID"
-    # status = advanced_search_fields["book.Status"] if advanced_search_fields["book.Status"] != '' else 2
+    # query += "\nGROUP BY bookdata.BookID"
+    status = advanced_search_fields["book.Status"] if advanced_search_fields["book.Status"] != '' else 2
     # query += f"AND book.Status <= {status}\n"
-    # query += "GROUP BY book.BookID\nHAVING MIN(book.Status) <= %s"
-    # search_params.append(status)
+    query += "\nGROUP BY\n    book.BookID\nHAVING MIN(book.Status) <= %s\n"
+    search_params.append(status)
 
     # Add pagination
     offset = (page_number - 1) * results_per_page
@@ -83,14 +84,14 @@ def get_book_details(bookid:int):
         COUNT(*) AS 'Number of Copies'
     FROM
         bookdata bd
-        JOIN book b ON bd.BookID = b.BookID
         JOIN category c ON bd.CategoryID = c.CategoryID
         JOIN publisher p ON bd.PublisherID = p.PublisherID
         RIGHT JOIN author a ON bd.BookID = a.BookID
+        RIGHT JOIN book b ON bd.BookID = b.BookID
     WHERE
         bd.BookID = %s
     GROUP BY
-        bd.BookID;
+        b.BookID;
 
     """
     query = """
