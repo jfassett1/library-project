@@ -170,7 +170,7 @@ def patron(request):
     return render(request,"patron.html")
 
 def update(request):
-    return render(request,"update/update.html")
+    return render(request,"update/update.html",{"form":UpdateForm()})
 
 
 def add_row(request):

@@ -1,7 +1,16 @@
 import MySQLdb
-import populate_books
+#Because import statements break
+try:
+    from . import populate_books
+except:
+    import populate_books
+
+try:
+    from .db_connect import get_cursor
+except:
+    from db_connect import get_cursor
+
 from faker import Faker
-from db_connect import get_cursor
 
 
 #List of tables generated
