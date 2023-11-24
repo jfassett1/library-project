@@ -41,11 +41,11 @@ def format_author_data(book_data:pd.DataFrame):
 
     Args:
         book_data (pd.Dataframe): Book info dataframe with 'authors' column
-    
+
     Returns:
         tuple: Authors & BookIDs
-    
-    
+
+
     """
     authors = book_data[["authors"]].copy()
     #Changes index to default incremental
@@ -61,22 +61,6 @@ def format_author_data(book_data:pd.DataFrame):
         exploded_authors.index,
         exploded_authors['authors']
     ))
-
-
-def generate_library(book_data:pd.DataFrame)->tuple[tuple,...]:
-    def append_period_and_copy_number(group):
-        group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("DecimalCode").cumcount().astype(str)
-        return group
-    sample = book_data.groupby("categories").sample(frac=0.10, replace=True, weights=book_data["ratingsCount"]+1)["categories"]
-    status = np.random.randint(0, 3, len(sample))
-    category_codes = pd.Categorical(sample).codes
-    codes = category_codes.astype(str)
-    books = pd.DataFrame({ "DecimalCode":codes,"BookID":sample.index,"BookStatus":status})
-    books["DecimalCode"] += "."
-    books["DecimalCode"] += books["BookID"].astype(str).apply(lambda x: auto_truncate(x, 5))
-    books =  books.groupby("DecimalCode").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
-    books = books.reset_index().drop(["DecimalCode", "level_1"], axis=1).rename({"newDecimalCode":"DecimalCode"}, axis=1)
-    return tuple(books.itertuples(index=False, name=None))
 
 def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
     """Get codes for a categorical feature
@@ -103,7 +87,7 @@ def read_books_data():
             "Title":lambda x: auto_truncate(x, 255),
             "categories": lambda x: x[2:-2],
             },
-        nrows=100_000
+        # nrows=100_000
         )
 
     books_data = books_data.drop_duplicates(subset = "Title")
@@ -144,43 +128,40 @@ class Bookshelf:
             '07': [],
         }
     def append(self, bookID):
-        for shelf_number, books in self.subshelves.items():
-            if len(books) < 30:
-                books.append(bookID)
-                break
+        for _, books in filter(lambda x: len(x[1])<30, self.subshelves.items()):
+            books.append(bookID)
+            break
         else:
             self.full = True
             return "Full"
+
     def read(self):
         print(f"Bookshelf: {self.bookshelfID}\nCategory: {self.category}")
         for shelf in self.subshelves.values():
             print(shelf)
+
     def index(self):
         finallist = []
         b_id = f"{self.bookshelfID:03d}"
         for subshelf,books in self.subshelves.items():
             for book_id in books:
-                finallist.append((f"{b_id}-{subshelf}-{book_id}",book_id,random.randint(0,2)))
+                finallist.append((f"{b_id}.{subshelf}.{book_id}",book_id,0))
         return finallist
 
-def populate_bookshelves(ids,startint=1,category:str='Misc'):
+
+def populate_bookshelves(books, startint=1,category:str='Misc'):
     """Builds bookshelf data
     Args: iterable of bookIDs
 
-
     Returns: List of bookshelf objects
-    
-    
-    
-    
     """
     bookshelves = [Bookshelf(startint,category)]
     next_bookshelf_id = startint + 1
-    for i in ids:
+    for id in books:
         book_added = False
         for bookshelf in bookshelves:
-            result = bookshelf.append(i)
-            if result is None: 
+            result = bookshelf.append(id)
+            if result is None:
                 book_added = True
                 break
 
@@ -189,34 +170,33 @@ def populate_bookshelves(ids,startint=1,category:str='Misc'):
             new_bookshelf = Bookshelf(next_bookshelf_id)
             new_bookshelf.category = category
             bookshelves.append(new_bookshelf)
-            new_bookshelf.append(i)  # Add the book to the new bookshelf
+            new_bookshelf.append(id)  # Add the book to the new bookshelf
             # print(f"Created Bookshelf{len(bookshelves)} for book {i}")
             next_bookshelf_id += 1
 
     return bookshelves
 
-def generate_shelf_decimal(books_data):
-    books2 = books_data.copy()
-    books2.replace("","Misc",inplace=True)
-    grouped = books2.groupby(by='categories')
+def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
+    def append_period_and_copy_number(group):
+        group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("DecimalCode").cumcount().astype(str)
+        return group
+    sample = books_data.groupby("categories").sample(frac=0.2, replace=True, weights=np.log10(books_data["ratingsCount"]+2))["categories"]
+
+    sample.replace("","Misc",inplace=True)
+    # print(sample.head())
+    grouped = sample.groupby(sample)
     library = []
     misc_cats = []
 
-    startint = True
-    for cat,group in grouped:
+    for cat, group in grouped:
         if len(group) <= 200:
             misc_cats.append(cat)
         else:
-
-            if startint:
-                library.extend(populate_bookshelves(group.index,category=cat))
-                startint = False
-            else:
-                library.extend(populate_bookshelves(group.index,startint=len(library)+1,category=cat))
+            library.extend(populate_bookshelves(group.index,startint=len(library)+1,category=cat))
 
     last_int = library[-1].bookshelfID
 
-    misc = books2[books2['categories'].isin(misc_cats)]
+    misc = sample.isin(misc_cats)
     library.extend(populate_bookshelves(misc.index,startint=last_int,category="Misc",))
 
 
@@ -225,21 +205,27 @@ def generate_shelf_decimal(books_data):
         indices.extend(bookshelf.index())
     print(f"Generating {len(library)} bookshelves containing {len(indices)} books")
 
-    # for bookshelf in library:
-    #     print(f"Bookshelf ID: {bookshelf.bookshelfID}")  
-    return tuple(indices)
+    data = pd.DataFrame(indices, columns=["DecimalCode","BookID", "BookStatus"])
+    data =  data.groupby("DecimalCode").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
+    data = data.reset_index().drop(["DecimalCode", "level_1"], axis=1).rename({"newDecimalCode":"DecimalCode"}, axis=1)
 
+    return data
 
+def books_to_tuples(books):
+    return tuple(books.itertuples(False, None))
 
 if __name__ == "__main__":
 
     books_data = read_books_data()
-    print(books_data.head())
+    books = generate_shelf_decimal(books_data)
+    print(books[:30])
+    # print(books_data.head())
     # print(generate_library(books_data))
     # print(books_data["categories"])
     # print(books_data.isna().sum())
     # print(books_data["publishedDate"].min(),books_data["publishedDate"].max())
     # print(books_data.dtypes)
-    print(create_book_data(books_data)[:30])
+    # print(create_book_data(books_data)[:30])
+
     # print(books_data["Title"].iloc[115:125])
     # print(books_data[books_data["Title"]=="World in Eclipse"])

@@ -62,10 +62,10 @@ CREATE TABLE author (
 queries.append(
 """CREATE TABLE checkout (
     Patron INT REFERENCES patron(AccID),
-    Book CHAR(12) REFERENCES book(DecimalCode),
-    Time_Out DATETIME NOT NULL,
+    DecimalCode VARCHAR(15) REFERENCES book(DecimalCode),
+    TimeOut DATETIME NOT NULL,
     Due DATE NOT NULL,
-    PRIMARY KEY (Patron, Book)
+    PRIMARY KEY (Patron, DecimalCode, TimeOut)
 );""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
@@ -119,13 +119,15 @@ def initialize():
 
     # read and insert book data
     books_data = populate_books.read_books_data()
+    books = populate_books.generate_shelf_decimal(books_data)
+    books_data = books.join(books_data, on="BookID", how="inner")
     insert("patron","Name, Address, Email",values)
     insert("category","CategoryID, CategoryName", populate_books.extract_categorical_book_data(books_data, "categories"))
     insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
     insert("bookdata","Title, PublishDate, PublisherID, CategoryID, Description", populate_books.create_book_data(books_data))
     insert("author","BookID, Name",populate_books.format_author_data(books_data)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert("book","DecimalCode, BookID, Status", populate_books.generate_library(books_data))
-    insert("book","DecimalCode, BookID, Status", populate_books.generate_shelf_decimal(books_data))
+    insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books))
 #Main
 if __name__ == "__main__":
     initialize()
