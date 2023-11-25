@@ -6,6 +6,7 @@ import MySQLdb
 from .forms import SearchForm,addForm,rmForm
 from .initialization.db_connect import get_cursor
 from utils.general import keys_values_to_dict
+from django.contrib.auth.decorators import login_required
 import logging
 from django.utils.safestring import mark_safe
 
@@ -102,7 +103,6 @@ def search(request):
         results, query, qfields = construct_query(search_query, advanced_search, page, 50)
         results_numbers = (page-1) * 50
 
-        # print(results)
         temp = form.cleaned_data
         temp["page"] = 1
         new_form = SearchForm(temp)
@@ -120,7 +120,7 @@ def search(request):
 
 
 def get_book_details(bookid:int):
-    print(bookid, type(bookid))
+    # print(bookid, type(bookid))
 
     query = """
     SELECT
@@ -143,7 +143,6 @@ def get_book_details(bookid:int):
         bd.BookID = %s
     GROUP BY
         b.BookID, b.DecimalCode;
-
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
@@ -158,6 +157,30 @@ def get_book_details(bookid:int):
         ],
         [tuple(r) for r in zip(*results)]
     )
+
+def get_copy_details(decimal_code:str):
+    query = """
+    SELECT
+        b.Status,
+        COUNT(w.BookID)
+    FROM
+        waitlist as w
+        LEFT JOIN book as b ON b.BookID = w.BookID
+    WHERE
+        b.DecimalCode = %s
+    GROUP BY
+        b.BookID
+    """
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        cursor.execute(query, (decimal_code,))
+
+        # Fetch the results
+        results = cursor.fetchall()
+    if not results:
+        return True
+    else:
+        return len(results) + 1
 
 
 def detailed_results(request, bookid):
@@ -239,6 +262,24 @@ def add_row(request):
             return render(request,"update/change.html",{'message':message,'query':query_bookdata})
     return HttpResponse("Invalid request method")
 
+@login_required
+def checkout_book(request):
+    logger.info(request)
+    if request.method == 'POST':
+        book_requested = request.POST
+        book = get_copy_details(**book_requested)
+
+        # Check if the book is available
+        if book is True:
+            # Perform the checkout
+            return JsonResponse({'success': True})
+        else:
+            # Add the user to the waitlist
+            # (You would typically have a waitlist model for more complex scenarios)
+            return JsonResponse({'waitlisted': book})
+
+    # If the request method is not POST, return an error response
+    return JsonResponse({'error': 'Invalid request method'})
 
 def db_ping(request):
     # with MySQLdb.connect("db") as conn:
