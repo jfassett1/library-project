@@ -177,7 +177,7 @@ def populate_bookshelves(books, startint=1,category:str='Misc'):
 
 def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
     def append_period_and_copy_number(group):
-        group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("DecimalCode").cumcount().astype(str)
+        group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("BookID").cumcount().astype(str)
         return group
     sample = books_data.groupby("categories").sample(frac=0.2, replace=True, weights=np.log10(books_data["ratingsCount"]+2))["categories"]
 
