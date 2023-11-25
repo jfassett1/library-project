@@ -26,15 +26,14 @@ def construct_query(
     SELECT
         bookdata.BookID,
         bookdata.Title,
+        bookdata.Publisher,
         GROUP_CONCAT(DISTINCT author.Name),
-        publisher.PublisherName,
         COUNT(DISTINCT book.DecimalCode) AS "num_copies",
         MIN(book.Status)
     FROM
         bookdata
-        JOIN publisher ON publisher.PublisherID = bookdata.PublisherID
-        JOIN category ON category.CategoryID = bookdata.CategoryID
-        RIGHT JOIN author on bookdata.BookID = author.BookID
+        RIGHT JOIN category ON category.BookID = bookdata.BookID
+        RIGHT JOIN author ON bookdata.BookID = author.BookID
         RIGHT JOIN book ON bookdata.BookID = book.BookID
     WHERE
         1
@@ -124,25 +123,23 @@ def get_book_details(bookid:int):
 
     query = """
     SELECT
-        bd.Title AS 'Book Title',
+        cb.Title AS 'Book Title',
         GROUP_CONCAT(a.Name) AS 'Authors',
-        c.CategoryName AS 'Category Name',
-        p.PublisherName AS 'Publisher Name',
-        bd.PublishDate AS 'Publish Date',
-        bd.Description AS 'Description',
+        GROUP_CONCAT(c.CategoryName) AS 'Categories',
+        cb.Publisher AS 'Publisher Name',
+        cb.PublishDate AS 'Publish Date',
+        cb.Description AS 'Description',
         COUNT(*) AS 'Number of Copies',
-        b.DecimalCode AS 'Book Codes',
-        b.Status AS 'Status'
+        cb.DecimalCode AS 'Book Codes',
+        cb.Status AS 'Status'
     FROM
-        bookdata bd
-        JOIN category c ON bd.CategoryID = c.CategoryID
-        JOIN publisher p ON bd.PublisherID = p.PublisherID
-        RIGHT JOIN author a ON bd.BookID = a.BookID
-        RIGHT JOIN book b ON bd.BookID = b.BookID
+        combined_bookdata cb
+        RIGHT JOIN category c ON cb.BookID = c.BookID
+        RIGHT JOIN author a ON cb.BookID = a.BookID
     WHERE
-        bd.BookID = %s
+        cb.BookID = %s
     GROUP BY
-        b.BookID, b.DecimalCode;
+        cb.BookID, cb.DecimalCode;
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)

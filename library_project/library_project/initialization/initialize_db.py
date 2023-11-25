@@ -56,7 +56,7 @@ CREATE TABLE category (
 );""")
 queries.append("""
 CREATE TABLE book (
-    DecimalCode VARCHAR(15) PRIMARY KEY,
+    DecimalCode VARCHAR(25) PRIMARY KEY,
     BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
 );""")
@@ -65,7 +65,7 @@ CREATE TABLE book (
 queries.append(
 """CREATE TABLE checkout (
     Patron INT REFERENCES patron(AccID),
-    DecimalCode VARCHAR(15) REFERENCES book(DecimalCode),
+    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
     TimeOut DATETIME NOT NULL,
     Due DATE NOT NULL,
     PRIMARY KEY (Patron, DecimalCode, TimeOut)
@@ -73,7 +73,7 @@ queries.append(
 queries.append("""CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
     Patron INT REFERENCES patron(AccID),
-    BookID VARCHAR(20) REFERENCES book(BookID)
+    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode)
 );""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
@@ -180,18 +180,23 @@ def initialize():
 
     create_table(queries)
     create_view()
-    # Insert data into the view
 
-    books_data = populate_books.read_books_data(10_000)
-    data = books_data[["Title", "publishedDate", "publisher", "description", "DecimalCode", "BookStatus", "authors", "categories"]]
+    books_data = populate_books.read_books_data()
     insert("bookdata",
            "Title, PublishDate, Publisher, Description",
            populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
+
+    # extract and merge book data with correct book id
+    data = books_data[["Title", "publishedDate", "publisher", "description", "DecimalCode", "BookStatus", "authors", "categories"]]
     books = populate_books.merge(get_book_ids(), data, False, "Title").drop_duplicates(subset="DecimalCode")
-    print(books.columns)
+
+    # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
+    # insert authors
     insert("author","BookID, Name",populate_books.format_combined_data(books, "authors")," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
+    # insert categories
     insert("category","BookID, CategoryName", populate_books.format_combined_data(books, "categories"), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
+
     # Create 100 fake patrons
     fake = Faker()
     n_patrons = 100
