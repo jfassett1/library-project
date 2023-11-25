@@ -25,7 +25,7 @@ def construct_query(
         bookdata.Title,
         GROUP_CONCAT(DISTINCT author.Name),
         publisher.PublisherName,
-        COUNT(*) AS "num_copies",
+        COUNT(DISTINCT book.DecimalCode) AS "num_copies",
         MIN(book.Status)
     FROM
         bookdata
@@ -39,17 +39,18 @@ def construct_query(
     search_params = []
     if search_term:
 
-        query += """    AND MATCH (bookdata.Title, bookdata.Description)
-            AGAINST (%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)"""
+        query += """
+        AND MATCH (bookdata.Title, bookdata.Description)
+            AGAINST (%s IN NATURAL LANGUAGE MODE)"""
         search_params.append(search_term)
 
     # Add advanced search conditions
     for field, value in filter(lambda x: x[1] != '' and x[0] != "book.Status", advanced_search_fields.items()):
         query += f" AND {field} LIKE %s"
         search_params.append(f"%{value}%")
-    # query += "\nGROUP BY bookdata.BookID"
+
+
     status = advanced_search_fields["book.Status"] if advanced_search_fields["book.Status"] != '' else 2
-    # query += f"AND book.Status <= {status}\n"
     query += "\nGROUP BY\n    book.BookID\nHAVING MIN(book.Status) <= %s\n"
     search_params.append(status)
 
@@ -57,8 +58,8 @@ def construct_query(
     offset = (page_number - 1) * results_per_page
     query += f" LIMIT {results_per_page} OFFSET {offset};"
     logger.info(query)
-    # return query, search_params
 
+    # return query, search_params
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
 
@@ -126,9 +127,10 @@ def get_book_details(bookid:int):
         c.CategoryName AS 'Category Name',
         p.PublisherName AS 'Publisher Name',
         bd.PublishDate AS 'Publish Date',
-        MIN(b.Status) AS 'Minimum Status',
         bd.Description AS 'Description',
-        COUNT(*) AS 'Number of Copies'
+        COUNT(*) AS 'Number of Copies',
+        b.DecimalCode AS 'Book Codes',
+        b.Status AS 'Status'
     FROM
         bookdata bd
         JOIN category c ON bd.CategoryID = c.CategoryID
@@ -138,24 +140,8 @@ def get_book_details(bookid:int):
     WHERE
         bd.BookID = %s
     GROUP BY
-        b.BookID;
+        b.BookID, b.DecimalCode;
 
-    """
-    query = """
-    SELECT
-        bd.Title AS 'Book Title',
-        GROUP_CONCAT(a.Name) AS 'Author',
-        c.CategoryName AS 'Category Name',
-        p.PublisherName AS 'Publisher Name',
-        bd.PublishDate AS 'Publish Date',
-        bd.Description AS 'Description'
-    FROM
-        bookdata bd
-        JOIN publisher p ON p.PublisherID = bd.PublisherID
-        JOIN category c ON c.CategoryID = bd.CategoryID
-        RIGHT JOIN author a ON bd.BookID = a.BookID
-    WHERE
-        bd.BookID = %s;
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
@@ -163,12 +149,19 @@ def get_book_details(bookid:int):
 
         # Fetch the results
         results = cursor.fetchall()
-
-    return keys_values_to_dict(["title",  "authors", "category", "publisher","publishdate","description"],results[0])
+    print(results)
+    return keys_values_to_dict(
+        [
+            "title",  "authors", "category", "publisher","publishdate","description", "copies", "codes", "status"
+        ],
+        [tuple(r) for r in zip(*results)]
+    )
 
 
 def detailed_results(request, bookid):
     results = get_book_details(bookid)
+    results["books"] = list(zip(results["codes"], results["status"]))
+    print(results)
     return render(request, "search/details.html", {"results":results})
 
 def landing(request):
@@ -188,7 +181,7 @@ def db_ping(request):
         conn = MySQLdb.connect("db")
 
         cursor = conn.cursor()
-        query = "select * from library_project_patron"
+        query = "select * from patron"
         cursor.execute("use library")
         cursor.execute(query)
         conn.close()

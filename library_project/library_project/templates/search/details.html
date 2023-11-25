@@ -5,11 +5,38 @@
 {% block body %}
 {% comment %} {% include 'search/searchbar.html' %} {% endcomment %}
 <div class="container">
-    <div><strong>Title: </strong>{{results.title}}</div>
-    <div><strong>Author(s): </strong>{{results.authors}}</div>
-    <div><strong>Category: </strong>{{results.category}}</div>
-    <div><strong>Publisher: </strong>{{results.publisher}}</div>
-    <div><strong>Year of Publication: </strong>{{results.publishdate}}</div>
-    <div><strong>Description: </strong>{{results.description}}</div>
+    <div><strong>Title: </strong>{{results.title.0}}</div>
+    <div><strong>Author(s): </strong>{{results.authors.0}}</div>
+    <div><strong>Category: </strong>{{results.category.0}}</div>
+    <div><strong>Publisher: </strong>{{results.publisher.0}}</div>
+    <div><strong>Year of Publication: </strong>{{results.publishdate.0}}</div>
+    <div><strong>Description: </strong>{{results.description.0}}</div>
 </div>
+<div class="container">
+    <h3>Entries</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Decimal Code</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for code, status in results.books %}
+
+                <tr>
+                    <td>{{code}}</td>
+                    {% if status == 0 %}
+                        <td>In Stock</td>
+                    {% elif status == 1 %}
+                        <td>Out of Stock</td>
+                    {% else%}
+                        <td>Reserved</td>
+                    {% endif%}
+                </tr>
+            {% endfor %}
+        </tbody>
+
+</div>
+
 {% endblock %}
