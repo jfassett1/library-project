@@ -19,3 +19,26 @@ class SearchForm(forms.Form):
     # isbn = forms.CharField(label="ISBN", max_length=13, required=False)
     decimal_code = forms.CharField(label="Decimal Code", max_length=12, required=False)
     page = forms.IntegerField(min_value=1, widget=forms.HiddenInput(),initial=1)
+
+class addForm(forms.Form):
+    title = forms.CharField(label="Title", max_length=100, required=True)
+    author = forms.CharField(label="Author", max_length=60, required=True)
+    genre = forms.CharField(label="Genre", max_length=50, required=True)
+    categoryID = forms.IntegerField(label="CategoryID",min_value=0,max_value=10000)
+    year = forms.IntegerField(label="Year of Publication",min_value=0,max_value=2100)
+    publisher = forms.IntegerField(label="PublisherID",required=True)
+    desc = forms.CharField(label="Description",max_length = 300,required=True)
+    
+class rmForm(forms.Form):
+    searchoptions = ((0,"BookID"),(1,"Decimal"))
+    SEARCHBY = forms.ChoiceField(widget=forms.RadioSelect,choices=searchoptions,initial='BookID',required=True)
+    decimal = forms.CharField(label="Decimal Code",max_length=12,required=False)
+    bookid = forms.CharField(label="BookID",max_length=12,required=False)
+
+    # title = forms.CharField(label="Title", max_length=100, required=True)
+    # author = forms.CharField(label="Author", max_length=60, required=True)
+    # genre = forms.CharField(label="Genre", max_length=50, required=True)
+    # categoryID = forms.IntegerField(label="CategoryID",min_value=0,max_value=10000)
+    # year = forms.IntegerField(label="Year of Publication",min_value=0,max_value=2100)
+    # publisher = forms.CharField(label="Publisher",max_length = 50,required=True)
+    # desc = forms.CharField(label="Description",max_length = 300,required=True)

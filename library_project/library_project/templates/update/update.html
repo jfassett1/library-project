@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block head %}
+<style>
+    .container-wrapper {
+        display: flex; /* Use flexbox for horizontal layout */
+        justify-content: space-between; /* Add space between the containers */
+    }
+
+    .container {
+        width: 48%; /* Adjust the width as needed */
+    }
+</style>
+{%endblock%}
+
+
+
+{%block body%}
+{%include 'update/add.html'%}
+{%include 'update/remove.html'%}
+{%endblock%}
+

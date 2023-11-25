@@ -26,5 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('db_ping/', views.db_ping, name='db_ping'),
     path("details/<int:bookid>/", views.detailed_results, name="book-details"),
+    path("update/", views.update, name="update"),
+    path('change/', views.change, name='change'),
     path('checkout-book/', views.checkout_book, name='checkout_book'),
 ]

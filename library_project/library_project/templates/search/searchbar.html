@@ -1,6 +1,10 @@
 <div class="container">
     <form id="searchForm" method="GET" action="{% url 'search-page'%}">
-        {{ form.as_p }}
+        <b>Search for a book below!</b><br><br>
+        <table>
+        {{ form.as_table }}
+        </table>
         <button  type="submit">Submit</button>
     </form>
+
 </div>

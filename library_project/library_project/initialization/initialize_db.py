@@ -51,7 +51,7 @@ CREATE TABLE bookdata (
 ) Engine = InnoDB;""")
 queries.append("""
 CREATE TABLE book (
-    DecimalCode VARCHAR(20) PRIMARY KEY,
+    DecimalCode VARCHAR(15) PRIMARY KEY,
     BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
 );""")

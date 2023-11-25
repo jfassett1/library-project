@@ -1,0 +1,13 @@
+<div class="container">
+    <b>Remove Book</b>
+    <p>You must search by at least one parameter</p>
+    <form id="rmForm" method="POST" action="{% url 'change'%}">
+        {% csrf_token %}
+
+        <input type="hidden" name="action" value="remove">
+        <table>
+        {{ rmForm.as_table }}
+        </table>
+        <button type="submit">Submit</button>
+    </form>
+</div>
