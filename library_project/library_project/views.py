@@ -199,7 +199,24 @@ def patron(request):
 
     return render(request,"patron.html")
 def update(request):
-    return render(request,"update/update.html",{"form":addForm()})
+    return render(request,"update/update.html",{"addForm":addForm(),
+                                                "rmForm":rmForm()})
+
+
+def change(request):
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action == 'add':
+            return add_row(request)
+        elif action == 'remove':
+            return remove_row(request)
+        else:
+            return HttpResponse("epic fail")
+    return
+
+
+
+
 
 
 def remove_row(request):
@@ -208,13 +225,34 @@ def remove_row(request):
         if form.is_valid():
             conn = MySQLdb.connect("db")
             cursor = get_cursor(conn,"library")
-            title = form.cleaned_data['title']
-            author = form.cleaned_data['author']
-            genre = form.cleaned_data['genre']
-            publisher = form.cleaned_data['publisher']
-            categoryID = form.cleaned_data['categoryID']
-            year = form.cleaned_data['year']
-            descript = form.cleaned_data['desc']
+
+            searchby = form.cleaned_data['SEARCHBY']
+            decimal = form.cleaned_data['decimal']
+            bookID = form.cleaned_data['bookid']
+            if not (decimal or bookID):
+                return HttpResponse("Input at least one field")
+
+            #Depending on searchby
+            if searchby == "0":
+                query = f"DELETE FROM bookdata WHERE BookID = {bookID}"
+            elif searchby == "1":
+                query = f"""DELETE FROM bookdata AS bd
+                            WHERE bd.BookID IN (
+                                SELECT b.BookID
+                                FROM book AS b
+                                WHERE b.DecimalCode = '{decimal}'
+                            );"""
+            else:
+                query = ""
+            try:
+                cursor.execute(query)
+                conn.commit()
+
+                message = "Succesful?"
+            except MySQLdb.Error as e:
+                message = e
+            return render(request,"update/change.html",{'message':message,'query':query})
+    return HttpResponse("Invalid request method")
 
 
 
@@ -230,6 +268,7 @@ def add_row(request):
             cursor = get_cursor(conn,"library")
 
             # Form data is valid, so you can process and save it to the database
+
             title = form.cleaned_data['title']
             author = form.cleaned_data['author']
             genre = form.cleaned_data['genre']

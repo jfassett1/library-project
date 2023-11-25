@@ -27,6 +27,6 @@ urlpatterns = [
     path('db_ping/', views.db_ping, name='db_ping'),
     path("details/<int:bookid>/", views.detailed_results, name="book-details"),
     path("update/", views.update, name="update"),
-    path('add_row/', views.add_row, name='add_row'),
+    path('change/', views.change, name='change'),
     path('checkout-book/', views.checkout_book, name='checkout_book'),
 ]
