@@ -1,15 +1,15 @@
-from django.shortcuts import render
-from django.http import HttpResponse
-from django.http import JsonResponse
+import logging
+
 # from . import initialize_db
 import MySQLdb
-from .forms import SearchForm,addForm,rmForm
-from .initialization.db_connect import get_cursor
-from utils.general import keys_values_to_dict
 from django.contrib.auth.decorators import login_required
-import logging
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.utils.safestring import mark_safe
+from utils.general import keys_values_to_dict
 
+from .forms import SearchForm, addForm, rmForm
+from .initialization.db_connect import get_cursor
 
 logger = logging.getLogger('django')
 # BOOK_STATUS = { "":2,"In stock":0,
@@ -113,7 +113,7 @@ def search(request):
                 "form":new_form,
                 "SQLquery":query,
                 "results":results,
-                "num_res":(results_numbers, results_numbers+ len(results))
+                "num_res":(results_numbers, results_numbers + len(results))
                 }
             )
     return render(request, "search/search.html")

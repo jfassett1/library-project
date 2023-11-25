@@ -24,6 +24,8 @@ services:
     environment:
       MYSQL_DATABASE: 'library'
       MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
     volumes:
       - ./data/mysql/db:/var/lib/mysql
     ports:

@@ -7,7 +7,7 @@ with MySQLdb.connect("db") as conn:
     cursor = get_cursor(conn)
     for table in list_of_tables:
         print(f"Removing {table}")
-        query = f"drop table {table}"
+        query = f"DROP TABLE {table};"
         try:
             cursor.execute(query)
         except MySQLdb.Error as e:

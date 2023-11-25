@@ -51,7 +51,6 @@ def format_author_data(book_data:pd.DataFrame):
     authors.reset_index(inplace=True)
     authors.index +=1
 
-    authors.fillna('["Unknown"]',inplace=True)
     #Turns string representations of list into actual list
     authors['authors'] = authors['authors'].apply(lambda x: eval(x))
     #Creates duplicate rows for each author of a book, keeps proper index
@@ -61,6 +60,30 @@ def format_author_data(book_data:pd.DataFrame):
         exploded_authors['authors']
     ))
 
+def format_combined_data(book_data:pd.DataFrame, column):
+    """formats author data
+
+    Args:
+        book_data (pd.Dataframe): Book info dataframe with column column
+
+    Returns:
+        tuple: Authors & BookIDs
+
+
+    """
+    col_data = book_data[[column]].copy()
+    #Changes index to default incremental
+    col_data.reset_index(inplace=True)
+    col_data.index +=1
+
+    #Turns string representations of list into actual list
+    col_data[column] = col_data[column].apply(lambda x: eval(x))
+    #Creates duplicate rows for each author of a book, keeps proper index
+    exploded_col = col_data.explode(column)
+    return tuple(zip(
+        exploded_col.index,
+        exploded_col[column]
+    ))
 def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
     """Get codes for a categorical feature
 
@@ -72,7 +95,8 @@ def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
         tuple: tuple of tuples of category code and category name
     """
     data = book_data[column_name].unique()
-    return tuple(zip( pd.Categorical(data).codes, data))
+    print("total len",len(data), "unique len",len(set(data)))
+    return tuple([(d,) for d in data])
 
 
 
@@ -84,7 +108,7 @@ def read_books_data(nrows=None):
         converters={
             "publisher":lambda x: auto_truncate(x, 50),
             "Title":lambda x: auto_truncate(x, 255),
-            "categories": lambda x: x[2:-2],
+            # "categories": lambda x: auto_truncate(x[2:-2], 255),
             },
         nrows=nrows
         )
@@ -94,9 +118,14 @@ def read_books_data(nrows=None):
     books_data["publishedDate"] = books_data["publishedDate"].str.replace(r'\?', '0', regex=True)
     books_data["publishedDate"] = books_data["publishedDate"].str.extract(r"(^-?\d{,4})")
     books_data["publishedDate"] = books_data["publishedDate"].astype('int')
+    books_data["publisher"].replace("","UNKNOWN",inplace=True)
+    books_data["categories"].replace("",'["Misc"]',inplace=True)
+    books_data["authors"].fillna('["UNKNOWN"]',inplace=True)
+
+
 
     books_data["publisher"] = pd.Categorical(books_data["publisher"])
-    books_data["categories"] = pd.Categorical(books_data["categories"])
+    # books_data["categories"] = pd.Categorical(books_data["categories"])
     books_data = books_data.where(pd.notnull(books_data), None)
     books_data["ratingsCount"] = books_data["ratingsCount"].fillna(0)
     # books_data = books_data.dropna(axis=0)
@@ -179,12 +208,11 @@ def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
     def append_period_and_copy_number(group):
         group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("BookID").cumcount().astype(str)
         return group
-    sample = books_data.groupby("categories").sample(frac=0.2, replace=True, weights=np.log10(books_data["ratingsCount"]+2))["categories"]
+    sample = books_data.groupby("categories", observed=False).sample(frac=0.2, replace=True, weights=np.log10(books_data["ratingsCount"]+2))["categories"]
 
-    sample.replace("","Misc",inplace=True)
     # print(sample.head())
     sample.sort_index(inplace=True)
-    grouped = sample.groupby(sample)
+    grouped = sample.groupby(sample, observed=False)
     library = []
     misc_cats = []
 
