@@ -26,7 +26,7 @@ class addForm(forms.Form):
     genre = forms.CharField(label="Genre", max_length=50, required=True)
     categoryID = forms.IntegerField(label="CategoryID",min_value=0,max_value=10000)
     year = forms.IntegerField(label="Year of Publication",min_value=0,max_value=2100)
-    publisher = forms.CharField(label="Publisher",max_length = 50,required=True)
+    publisher = forms.IntegerField(label="PublisherID",required=True)
     desc = forms.CharField(label="Description",max_length = 300,required=True)
     
 class rmForm(forms.Form):
