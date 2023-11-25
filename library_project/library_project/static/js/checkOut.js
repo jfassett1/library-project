@@ -1,5 +1,6 @@
 function checkoutBook(decimalCode) {
     // Perform AJAX request to Django backend using fetch
+    console.log(JSON.stringify({decimal_code:decimalCode}))
     fetch('/checkout-book/', {
         method: 'POST',
         headers: {
@@ -7,7 +8,7 @@ function checkoutBook(decimalCode) {
             // You may need to include additional headers like CSRF token
             'X-CSRFToken': csrfToken // Define getCSRFToken() function
         },
-        body: JSON.stringify({"DecimalCode":decimalCode}),
+        body: JSON.stringify({decimal_code:decimalCode}),
     })
     .then(response => response.json())
     .then(data => {
@@ -15,13 +16,14 @@ function checkoutBook(decimalCode) {
         handleCheckoutResponse(data);
     })
     .catch(error => {
+        console.log(response)
         console.error('Error during fetch request:', error);
     });
 }
-
 function handleCheckoutResponse(response) {
     // Assuming the Django backend sends a JSON response
     // You may need to adjust this based on your actual backend response format
+
     if (response.success) {
         // Book successfully checked out
         alert('Book checked out successfully!');
@@ -34,17 +36,16 @@ function handleCheckoutResponse(response) {
     } else if (response.not_logged_in) {
         // User is not logged in
         alert('Please log in to check out the book.');
-        // You may redirect the user to the login page, for example
+        // You may redirect the user to the login page
         window.location.href = '/login/';
     } else {
-        // Handle other cases as needed
-        alert('Unexpected response from the server.');
+        // Check for a redirect status code (e.g., 302 Found)
+        if (response.redirect) {
+            // Perform a redirect
+            window.location.href = response.redirect;
+        } else {
+            // Handle other cases as needed
+            alert('Unexpected response from the server.');
+        }
     }
-}
-
-// Example function to get CSRF token, adjust as needed
-function getCSRFToken() {
-    const csrfCookie = document.cookie.split('; ')
-        .find(cookie => cookie.startsWith('csrftoken='));
-    return csrfCookie ? csrfCookie.split('=')[1] : '';
 }

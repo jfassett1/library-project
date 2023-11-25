@@ -1,3 +1,4 @@
+import json
 import logging
 
 # from . import initialize_db
@@ -147,7 +148,7 @@ def get_book_details(bookid:int):
 
         # Fetch the results
         results = cursor.fetchall()
-    print(results)
+    # print(results)
     return keys_values_to_dict(
         [
             "title",  "authors", "category", "publisher","publishdate","description", "copies", "codes", "status"
@@ -179,11 +180,31 @@ def get_copy_details(decimal_code:str):
     else:
         return len(results) + 1
 
+# @login_required
+def checkout_book(request):
+
+    if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body = json.loads(body_unicode)
+        book = get_copy_details(**body)
+
+        # Check if the book is available
+        if book is True:
+            # Perform the checkout
+            return JsonResponse({'success': True})
+        else:
+            # Add the user to the waitlist
+            # (You would typically have a waitlist model for more complex scenarios)
+            return JsonResponse({'waitlisted': book})
+
+    # If the request method is not POST, return an error response
+    return JsonResponse({'error': 'Invalid request method'})
+
 
 def detailed_results(request, bookid):
     results = get_book_details(bookid)
     results["books"] = list(zip(results["codes"], results["status"]))
-    print(results)
+    # print(results)
     return render(request, "search/details.html", {"results":results})
 
 def landing(request):
@@ -195,6 +216,7 @@ def lib(request):
 def patron(request):
 
     return render(request,"patron.html")
+
 def update(request):
     return render(request,"update/update.html",{"addForm":addForm(),
                                                 "rmForm":rmForm()})
@@ -209,11 +231,6 @@ def change(request):
             return remove_row(request)
         else:
             return HttpResponse("epic fail")
-    return
-
-
-
-
 
 
 def remove_row(request):
@@ -298,24 +315,7 @@ def add_row(request):
             return render(request,"update/change.html",{'message':message,'query':query_bookdata})
     return HttpResponse("Invalid request method")
 
-@login_required
-def checkout_book(request):
-    logger.info(request)
-    if request.method == 'POST':
-        book_requested = request.POST
-        book = get_copy_details(**book_requested)
 
-        # Check if the book is available
-        if book is True:
-            # Perform the checkout
-            return JsonResponse({'success': True})
-        else:
-            # Add the user to the waitlist
-            # (You would typically have a waitlist model for more complex scenarios)
-            return JsonResponse({'waitlisted': book})
-
-    # If the request method is not POST, return an error response
-    return JsonResponse({'error': 'Invalid request method'})
 
 def db_ping(request):
     # with MySQLdb.connect("db") as conn:

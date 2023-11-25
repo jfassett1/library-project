@@ -73,7 +73,7 @@ queries.append(
 queries.append("""CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
     Patron INT REFERENCES patron(AccID),
-    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode)
+    BookID INT REFERENCES bookdata(BookID)
 );""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
