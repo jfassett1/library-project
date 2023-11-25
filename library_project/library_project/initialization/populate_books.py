@@ -29,8 +29,7 @@ def create_book_data(book_data:pd.DataFrame):
         zip(
             book_data["Title"],
             book_data["publishedDate"],
-            pd.Categorical(book_data["publisher"]).codes,
-            pd.Categorical(book_data["categories"]).codes,
+            book_data["publisher"],
             book_data["description"]
         )
     )
@@ -84,59 +83,25 @@ def format_combined_data(book_data:pd.DataFrame, column):
         exploded_col.index,
         exploded_col[column]
     ))
-def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
-    """Get codes for a categorical feature
+
+def format_combined_data_df(book_data:pd.DataFrame, column)->pd.DataFrame:
+    """formats author data
 
     Args:
-        book_data (pd.DataFrame): Book data frame
-        column_name (str): name of column to extract
+        book_data (pd.Dataframe): Book info dataframe with column column
 
     Returns:
-        tuple: tuple of tuples of category code and category name
+        tuple: Authors & BookIDs
+
+
     """
-    data = book_data[column_name].unique()
-    print("total len",len(data), "unique len",len(set(data)))
-    return tuple([(d,) for d in data])
+    col_data = book_data[[column]].copy()
 
-
-
-def read_books_data(nrows=None):
-    parent_project_path = pathlib.Path(os.path.dirname(__file__)).parents[1]
-    data_folder = parent_project_path/"data"
-    books_data = pd.read_csv(
-        data_folder/"books_data.csv",
-        converters={
-            "publisher":lambda x: auto_truncate(x, 50),
-            "Title":lambda x: auto_truncate(x, 255),
-            # "categories": lambda x: auto_truncate(x[2:-2], 255),
-            },
-        nrows=nrows
-        )
-
-    books_data = books_data.drop_duplicates(subset = "Title")
-    books_data["publishedDate"] = books_data["publishedDate"].fillna("-9999")
-    books_data["publishedDate"] = books_data["publishedDate"].str.replace(r'\?', '0', regex=True)
-    books_data["publishedDate"] = books_data["publishedDate"].str.extract(r"(^-?\d{,4})")
-    books_data["publishedDate"] = books_data["publishedDate"].astype('int')
-    books_data["publisher"].replace("","UNKNOWN",inplace=True)
-    books_data["categories"].replace("",'["Misc"]',inplace=True)
-    books_data["authors"].fillna('["UNKNOWN"]',inplace=True)
-
-
-
-    books_data["publisher"] = pd.Categorical(books_data["publisher"])
-    # books_data["categories"] = pd.Categorical(books_data["categories"])
-    books_data = books_data.where(pd.notnull(books_data), None)
-    books_data["ratingsCount"] = books_data["ratingsCount"].fillna(0)
-    # books_data = books_data.dropna(axis=0)
-    #drops first row
-
-    books_data.sort_values(by='Title',inplace=True)
-    # books_data = books_data.iloc[1:, :]
-
-    # books_data = books_data.dropna(axis=0)
-
-    return books_data
+    #Turns string representations of list into actual list
+    col_data[column] = col_data[column].apply(lambda x: eval(x))
+    #Creates duplicate rows for each author of a book, keeps proper index
+    # exploded_col =
+    return col_data.explode(column)
 
 
 #Start of decimal generation
@@ -208,7 +173,7 @@ def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
     def append_period_and_copy_number(group):
         group["newDecimalCode"] =  group["DecimalCode"] + "." + group.groupby("BookID").cumcount().astype(str)
         return group
-    sample = books_data.groupby("categories", observed=False).sample(frac=0.2, replace=True, weights=np.log10(books_data["ratingsCount"]+2))["categories"]
+    sample = books_data["categories"]
 
     # print(sample.head())
     sample.sort_index(inplace=True)
@@ -245,11 +210,60 @@ def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
 def books_to_tuples(books):
     return tuple(books.itertuples(False, None))
 
+
+def merge(df, df2, both_index = False, right_on="BookID"):
+    cols_to_use = df2.columns.difference(df.columns)
+    if both_index:
+        return pd.merge(df, df2[cols_to_use], right_index=True, left_index=True, how='outer')
+    else:
+        return pd.merge(df, df2[cols_to_use], right_on=right_on, left_index=True, how='outer')
+
+def read_books_data(nrows=None):
+    parent_project_path = pathlib.Path(os.path.dirname(__file__)).parents[1]
+    data_folder = parent_project_path/"data"
+    books_data = pd.read_csv(
+        data_folder/"books_data.csv",
+        converters={
+            "publisher":lambda x: auto_truncate(x, 50),
+            "Title":lambda x: auto_truncate(x, 255),
+            # "categories": lambda x: auto_truncate(x[2:-2], 255),
+            },
+        nrows=nrows
+        )
+
+    books_data = books_data.drop_duplicates(subset = "Title")
+    books_data["publishedDate"] = books_data["publishedDate"].fillna("-9999")
+    books_data["publishedDate"] = books_data["publishedDate"].str.replace(r'\?', '0', regex=True)
+    books_data["publishedDate"] = books_data["publishedDate"].str.extract(r"(^-?\d{,4})")
+    books_data["publishedDate"] = books_data["publishedDate"].astype('int')
+    books_data["publisher"].replace("","UNKNOWN",inplace=True)
+    books_data["categories"].fillna('["Misc"]',inplace=True)
+    books_data["authors"].fillna('["UNKNOWN"]',inplace=True)
+
+
+
+    books_data["publisher"] = pd.Categorical(books_data["publisher"])
+    # books_data["categories"] = pd.Categorical(books_data["categories"])
+    books_data = books_data.where(pd.notnull(books_data), None)
+    books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
+    books_data = books_data.sample(frac=0.2, replace=True, weights=books_data["ratingsCount"])
+
+    books_data = merge(books_data,generate_shelf_decimal(books_data))
+    # books_data = merge(books_data, format_combined_data_df(books_data, "authors"), both_index=True)
+    # books_data = merge(books_data,format_combined_data_df(books_data.drop_duplicates("BookID",keep='first'), "categories"), both_index=True)
+
+    return books_data[["BookID","Title", "publishedDate", "publisher", "description", "authors", "categories", "DecimalCode", "BookStatus"]]
+
+
 if __name__ == "__main__":
 
     books_data = read_books_data(10_000)
-    books = generate_shelf_decimal(books_data)
-    print(books[:30])
+    print(books_data.columns)
+    books = books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")
+    print(len(books), len(books_data["BookID"].unique()))
+    # print(books_data.head())
+    # books = generate_shelf_decimal(books_data)
+    # print(books[:30])
     # print(books_data.head())
     # print(generate_library(books_data))
     # print(books_data["categories"])
