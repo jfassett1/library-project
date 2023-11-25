@@ -183,6 +183,7 @@ def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
 
     sample.replace("","Misc",inplace=True)
     # print(sample.head())
+    sample.sort_index(inplace=True)
     grouped = sample.groupby(sample)
     library = []
     misc_cats = []
@@ -205,7 +206,7 @@ def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
     print(f"Generating {len(library)} bookshelves containing {len(indices)} books")
 
     data = pd.DataFrame(indices, columns=["DecimalCode","BookID", "BookStatus"])
-    data =  data.groupby("DecimalCode").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
+    data =  data.groupby("BookID").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
     data = data.reset_index().drop(["DecimalCode", "level_1"], axis=1).rename({"newDecimalCode":"DecimalCode"}, axis=1)
 
     return data

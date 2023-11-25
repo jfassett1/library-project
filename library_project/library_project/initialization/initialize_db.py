@@ -2,6 +2,7 @@ import MySQLdb
 import populate_books
 from faker import Faker
 from db_connect import get_cursor
+# from django.contrib.auth.models import User
 
 
 #List of tables generated
@@ -13,12 +14,14 @@ list_of_tables = [
     "book",
     "author",
     "checkout",
+    "waitlist",
     "distance",
     "elevator"
 ]
 
 #Creating tables
 queries = []
+#TODO: make accID their username instead of an integer
 queries.append("""
 CREATE TABLE patron (
     AccID INT AUTO_INCREMENT PRIMARY KEY,
@@ -49,7 +52,7 @@ CREATE TABLE bookdata (
 queries.append("""
 CREATE TABLE book (
     DecimalCode VARCHAR(15) PRIMARY KEY,
-    BookID INT REFERENCES bookdata(BookID) NOT NULL,
+    BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
 );""")
 #Had to up Name length because of books written by long names by US agencies
@@ -67,8 +70,14 @@ queries.append(
     Due DATE NOT NULL,
     PRIMARY KEY (Patron, DecimalCode, TimeOut)
 );""")
+queries.append("""CREATE TABLE waitlist (
+    ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
+    Patron INT REFERENCES patron(AccID),
+    BookID VARCHAR(15) REFERENCES book(BookID)
+);""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
+
 
 def create_table(queries):
 
@@ -116,11 +125,17 @@ def initialize():
         zip([fake.name() for _ in range(n_patrons)],
             [fake.address() for _ in range(n_patrons)],
             [fake.unique.email() for _ in range(n_patrons)]))
+    # TODO: #7 recieve error about incorrect django settings if attempt to run
+    # create django login data
+    # for name, address, email in values:
+    #     user, _ = email.split("@")
+    #     User.objects.create_user(user, email, user)
 
     # read and insert book data
     books_data = populate_books.read_books_data()
     books = populate_books.generate_shelf_decimal(books_data)
     books_data = books.join(books_data, on="BookID", how="inner")
+    books_data.sort_values(by='Title',inplace=True)
     insert("patron","Name, Address, Email",values)
     insert("category","CategoryID, CategoryName", populate_books.extract_categorical_book_data(books_data, "categories"))
     insert("publisher", "PublisherID, PublisherName", populate_books.extract_categorical_book_data(books_data, "publisher"))
