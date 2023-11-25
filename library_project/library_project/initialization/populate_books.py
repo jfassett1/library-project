@@ -76,7 +76,7 @@ def extract_categorical_book_data(book_data:pd.DataFrame, column_name:str):
 
 
 
-def read_books_data():
+def read_books_data(nrows=None):
     parent_project_path = pathlib.Path(os.path.dirname(__file__)).parents[1]
     data_folder = parent_project_path/"data"
     books_data = pd.read_csv(
@@ -86,7 +86,7 @@ def read_books_data():
             "Title":lambda x: auto_truncate(x, 255),
             "categories": lambda x: x[2:-2],
             },
-        # nrows=100_000
+        nrows=nrows
         )
 
     books_data = books_data.drop_duplicates(subset = "Title")
@@ -206,17 +206,20 @@ def generate_shelf_decimal(books_data:pd.DataFrame) -> pd.DataFrame:
     print(f"Generating {len(library)} bookshelves containing {len(indices)} books")
 
     data = pd.DataFrame(indices, columns=["DecimalCode","BookID", "BookStatus"])
-    data =  data.groupby("BookID").apply(append_period_and_copy_number).loc[:,["newDecimalCode","BookID", "BookStatus"]]
-    data = data.reset_index().drop(["DecimalCode", "level_1"], axis=1).rename({"newDecimalCode":"DecimalCode"}, axis=1)
+    data =  data.groupby("BookID").apply(append_period_and_copy_number).loc[:,["newDecimalCode", "BookID", "BookStatus"]]
+    data.drop(columns=["BookID"],inplace=True)
+    data = data.rename({"newDecimalCode":"DecimalCode"}, axis=1)
+    data = data.reset_index()
+    data.drop(columns=["level_1"],inplace=True)
 
-    return data
+    return data[["DecimalCode", "BookID", "BookStatus"]]
 
 def books_to_tuples(books):
     return tuple(books.itertuples(False, None))
 
 if __name__ == "__main__":
 
-    books_data = read_books_data()
+    books_data = read_books_data(10_000)
     books = generate_shelf_decimal(books_data)
     print(books[:30])
     # print(books_data.head())
