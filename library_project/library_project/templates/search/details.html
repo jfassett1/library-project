@@ -1,7 +1,12 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}eLib - Home{% endblock %}
+{%block head%}
+<script> var csrfToken = '{{ csrf_token }}';</script>
 
+<script src="{%static 'js/checkOut.js' %}"></script>
+{% endblock%}
 {% block body %}
 {% comment %} {% include 'search/searchbar.html' %} {% endcomment %}
 <div class="container">
@@ -27,12 +32,13 @@
                 <tr>
                     <td>{{code}}</td>
                     {% if status == 0 %}
-                        <td>In Stock</td>
+                        <td>In Stock
                     {% elif status == 1 %}
-                        <td>Out of Stock</td>
+                        <td>Out of Stock
                     {% else%}
-                        <td>Reserved</td>
+                        <td>Reserved
                     {% endif%}
+                    <button action="checkoutBook('{{code}}')">Check Out</button></td>
                 </tr>
             {% endfor %}
         </tbody>

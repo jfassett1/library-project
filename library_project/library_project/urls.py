@@ -25,5 +25,6 @@ urlpatterns = [
     path("patron/",views.patron, name = 'patron-view'),
     path('admin/', admin.site.urls),
     path('db_ping/', views.db_ping, name='db_ping'),
-    path("details/<int:bookid>/", views.detailed_results, name="book-details")
+    path("details/<int:bookid>/", views.detailed_results, name="book-details"),
+    path('checkout-book/', views.checkout_book, name='checkout_book'),
 ]
