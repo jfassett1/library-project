@@ -178,7 +178,7 @@ def initialize():
     create_table(queries)
     create_view()
 
-    books_data = populate_books.read_books_data()
+    books_data = populate_books.read_books_data(50_000)
     insert("bookdata",
            "Title, PublishDate, Publisher, Description",
            populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
@@ -189,15 +189,21 @@ def initialize():
     # print(data.groupby("Title")["categories"].value_counts())
     # print(data[["categories", "authors"]].head())
     books = populate_books.merge(get_book_ids(), data, False, "Title").drop_duplicates(subset="DecimalCode")
+    print(books.columns)
     # books = pd.merge(get_book_ids(), data, right_index=True, left_index=True, how='right', validate="1:m")
     # print(books.head(), len(books), len(data))
     # print(len(data) - len(books["DecimalCode"].unique()))
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
-    insert("author","BookID, Name",populate_books.format_combined_data(books, "authors")," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
+    books.reset_index()
+    books = books.set_index("BookID")
+    print(books.head())
+    authors = populate_books.format_combined_data_df(books, "authors")
+    insert("author","BookID, Name",populate_books.books_to_tuples(authors, True)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert categories
-    insert("category","BookID, CategoryName", populate_books.format_combined_data(books, "categories"), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
+    categories = populate_books.format_combined_data_df(books, "categories")
+    insert("category","BookID, CategoryName", populate_books.books_to_tuples(categories, True), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
 
     # Create 100 fake patrons
     fake = Faker()

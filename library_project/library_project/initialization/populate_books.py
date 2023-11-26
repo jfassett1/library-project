@@ -64,7 +64,7 @@ def format_combined_data(book_data:pd.DataFrame, column):
     """formats author data
 
     Args:
-        book_data (pd.Dataframe): Book info dataframe with column column
+        book_data (pd.Dataframe): Book info dataframe with column 'column'
 
     Returns:
         tuple: Authors & BookIDs
@@ -217,34 +217,13 @@ def generate_shelf_decimal(books_data: pd.DataFrame) -> pd.DataFrame:
         library = pd.concat([library, *chunks])
 
     library["DecimalCode"] = library["DecimalCode"] + "." + library.groupby("BookID").cumcount().astype(str)
-    library["BookStatus"] = np.zeros(library.shape[0])
+    library["BookStatus"] = np.zeros(library.shape[0], dtype=np.int16)
     print(f"Generated {shelf_num} bookshelves containing {len(books_data)} books")
     return library[["DecimalCode", "BookID", "BookStatus"]]
-    # for cat, group in grouped:
-    #     if len(group) <= 200:
-    #         misc_cats.append(cat)
-    #     else:
-    #         library.extend(populate_bookshelves(group.index,startint=len(library)+1,category=cat))
-
-    # last_int = library[-1].bookshelfID if library else 0
-
-    # misc = books_data["categories"].isin(misc_cats)
-    # library.extend(populate_bookshelves(misc.index,startint=last_int,category="Misc",))
 
 
-
-
-    # data = pd.DataFrame(indices, columns=["DecimalCode","BookID", "BookStatus"])
-    # data =  data.groupby("BookID").apply(append_period_and_copy_number).loc[:,["newDecimalCode", "BookID", "BookStatus"]]
-    # data.drop(columns=["BookID"],inplace=True)
-    # data = data.rename({"newDecimalCode":"DecimalCode"}, axis=1)
-    # data = data.reset_index()
-    # data.drop(columns=["level_1"],inplace=True)
-
-    # return data[["DecimalCode", "BookID", "BookStatus"]]
-
-def books_to_tuples(books):
-    return tuple(books.itertuples(False, None))
+def books_to_tuples(books, index:bool=False):
+    return tuple(books.itertuples(index, None))
 
 
 def merge(df, df2, both_index = False, right_on="BookID"):
@@ -284,7 +263,7 @@ def read_books_data(nrows=None):
     books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
     print(books_data.index)
     books_data["BookID"] = books_data.index
-    sample_data = books_data.sample(frac=0.80, replace=True, weights=books_data["ratingsCount"])
+    sample_data = books_data.sample(40_000, replace=True, weights=books_data["ratingsCount"])
 
     # print(sample_data.iloc[0])
     # idx = sample_data.iloc[0].name
