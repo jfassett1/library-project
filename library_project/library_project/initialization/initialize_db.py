@@ -216,7 +216,7 @@ def initialize():
 
     # Create 100 fake patrons
     fake = Faker()
-    n_patrons = 100
+    n_patrons = 1000
     print(f"Building {n_patrons} patron accounts")
     values = tuple(
         zip([fake.name() for _ in range(n_patrons)],

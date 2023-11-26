@@ -204,6 +204,7 @@ def read_books_data(nrows=None):
     # create a sample of books weighted by number of reviews
     books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
     sample_data = books_data.sample(40_000, replace=True, weights=books_data["ratingsCount"])
+    sample_data.sort_values("BookID", inplace=True)
 
     # add decimal numbers to sample data
     sample_data = pd.merge(generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
