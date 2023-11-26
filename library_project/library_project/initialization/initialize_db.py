@@ -51,7 +51,7 @@ CREATE TABLE author (
 queries.append("""
 CREATE TABLE category (
     BookID INT REFERENCES bookdata(BookID),
-    CategoryName VARCHAR(200) DEFAULT 'UNKNOWN',
+    CategoryName VARCHAR(500) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, CategoryName)
 );""")
 queries.append("""
@@ -133,7 +133,7 @@ def get_book_ids():
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         query = """
-        SELECT * FROM bookdata;
+        SELECT bd.BookID, bd.Title FROM bookdata bd ORDER BY bd.BookID;
         """
         try:
             cursor.execute(query)
@@ -142,10 +142,7 @@ def get_book_ids():
 
     return pd.DataFrame(cursor.fetchall(), columns=[
             "BookID",
-            "Title",
-            "PublishDate",
-            "Publisher",
-            "Description",
+            "Title"
             ]).set_index("Title")
 
 
@@ -187,9 +184,14 @@ def initialize():
            populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
 
     # extract and merge book data with correct book id
-    data = books_data[["Title", "publishedDate", "publisher", "description", "DecimalCode", "BookStatus", "authors", "categories"]]
+    data = books_data[["Title", "publishedDate", "publisher", "description", "DecimalCode", "BookStatus", "authors", "categories"]].set_index("Title")
+    # data.sort_index(inplace=True)
+    # print(data.groupby("Title")["categories"].value_counts())
+    # print(data[["categories", "authors"]].head())
     books = populate_books.merge(get_book_ids(), data, False, "Title").drop_duplicates(subset="DecimalCode")
-
+    # books = pd.merge(get_book_ids(), data, right_index=True, left_index=True, how='right', validate="1:m")
+    # print(books.head(), len(books), len(data))
+    # print(len(data) - len(books["DecimalCode"].unique()))
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors

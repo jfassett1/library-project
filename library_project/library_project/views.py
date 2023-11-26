@@ -180,6 +180,8 @@ def get_copy_details(decimal_code:str):
     else:
         return len(results) + 1
 
+def user_checkout(book_decimal_code):
+    return
 # @login_required
 def checkout_book(request):
 
@@ -191,6 +193,7 @@ def checkout_book(request):
         # Check if the book is available
         if book is True:
             # Perform the checkout
+            user_checkout(body["decimal_code"])
             return JsonResponse({'success': True})
         else:
             # Add the user to the waitlist
