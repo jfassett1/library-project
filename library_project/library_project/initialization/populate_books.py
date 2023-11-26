@@ -112,7 +112,7 @@ def generate_shelf_decimal(books_data: pd.DataFrame) -> pd.DataFrame:
         for idx, c in enumerate(chunks):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                c.loc[:, "DecimalCode"] = f"{shelf_num+idx//7+1:3d}.{idx%7}."+c["BookID"].astype(str)
+                c.loc[:, "DecimalCode"] = f"{shelf_num+idx//7+1}.{idx%7}."+c["BookID"].astype(str)
         return shelf_num+len(chunks)//7+1, chunks
 
     def aggregate_groups(groups, chunk_size: int):

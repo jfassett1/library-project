@@ -203,8 +203,9 @@ def user_checkout(decimal_code):
         return True
     else:
         return len(results) + 1
-    return
-# @login_required
+
+
+@login_required
 def checkout_book(request):
 
     if request.method == 'POST':
