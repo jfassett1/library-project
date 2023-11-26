@@ -5,3 +5,4 @@ __pycache__/
 .vscode/
 .venv/
 books_data.csv
+db.sqlite3
