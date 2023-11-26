@@ -180,6 +180,10 @@ def get_copy_details(decimal_code:str):
     else:
         return len(results) + 1
 
+
+
+
+
 def user_checkout(book_decimal_code):
     return
 # @login_required
