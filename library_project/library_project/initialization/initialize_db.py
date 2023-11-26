@@ -78,6 +78,12 @@ queries.append("""CREATE TABLE waitlist (
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
 
+queries.append("""CREATE TABLE bookshelf (
+    BookshelfID INT PRIMARY KEY,
+    Category VARCHAR(200),
+    Slots INT,
+);""")
+
 
 def create_table(queries):
 
