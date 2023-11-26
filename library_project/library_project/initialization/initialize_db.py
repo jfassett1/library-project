@@ -23,6 +23,76 @@ list_of_views = [
     "combined_bookdata"
 ]
 
+
+triggers = triggers = {
+    "update_book_status_checkout": """
+    CREATE TRIGGER update_book_status_checkout
+    AFTER INSERT ON checkout
+    FOR EACH ROW
+    BEGIN
+        IF NEW.Status = 0 THEN
+            UPDATE book SET Status = 1 WHERE DecimalCode = NEW.DecimalCode;
+        ELSIF NEW.Status = 2 THEN
+            UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
+        END IF;
+    END;
+    """,
+
+    "update_book_status_return": """
+    CREATE TRIGGER update_book_status_return
+    AFTER UPDATE ON checkout
+    FOR EACH ROW
+    BEGIN
+        IF NEW.Status = 2 THEN
+            UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
+        END IF;
+    END;
+    """,
+
+    "update_book_status_waitlist": """
+    CREATE TRIGGER update_book_status_waitlist
+    AFTER INSERT ON waitlist
+    FOR EACH ROW
+    BEGIN
+        UPDATE book SET book.Status = 2 WHERE DecimalCode IN (
+            SELECT book.DecimalCode FROM book
+            WHERE book.BookID = NEW.BookID
+            AND book.Status = 1
+            ORDER BY book.DecimalCode
+            LIMIT 1
+        );
+    END;
+    """,
+
+    "update_book_availability": """
+    CREATE TRIGGER update_book_availability
+    AFTER UPDATE ON book
+    FOR EACH ROW
+    BEGIN
+        IF NEW.Status = 0 THEN
+            DECLARE patron_id INT;
+            DECLARE checkout_time DATETIME;
+            DECLARE due_date DATE;
+
+            SELECT Patron, TimeOut INTO patron_id, checkout_time
+            FROM checkout
+            WHERE DecimalCode = NEW.DecimalCode AND Status = 3
+            LIMIT 1;
+
+            IF patron_id IS NOT NULL THEN
+                SET due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
+
+                INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
+                VALUES (patron_id, NEW.DecimalCode, checkout_time, due_date, 3);
+
+                -- Remove user from waitlist
+                DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
+            END IF;
+        END IF;
+    END;
+    """
+}
+list_of_triggers = list(triggers.keys())
 #Creating tables
 queries = []
 #TODO: make accID their username instead of an integer
@@ -66,9 +136,10 @@ queries.append(
 """CREATE TABLE checkout (
     Patron INT REFERENCES patron(AccID),
     DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
-    TimeOut DATETIME NOT NULL,
-    Due DATE NOT NULL,
-    PRIMARY KEY (Patron, DecimalCode, TimeOut)
+    TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),
+    Status TINYINT NOT NULL,
+    PRIMARY KEY (DecimalCode, TimeOut)
 );""")
 queries.append("""CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -89,6 +160,11 @@ def create_table(queries):
 
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
+
+        try:
+            cursor.execute("DELIMITER //")
+        except MySQLdb.Error as e:
+            print(e)
         for table,tablename in zip(queries,list_of_tables):
             print(f"Creating table {tablename}")
             try:
@@ -100,6 +176,52 @@ def create_table(queries):
         # Execute the query for each set of values in the list
         conn.commit()
 
+
+def create_view():
+
+    query = """
+        CREATE VIEW combined_bookdata AS
+        SELECT
+            bd.BookID,
+            bd.Title,
+            bd.PublishDate,
+            bd.Publisher,
+            bd.Description,
+            b.DecimalCode,
+            b.Status
+        FROM
+            book b
+            INNER JOIN bookdata bd ON bd.BookID = b.BookID;
+        """
+    with MySQLdb.connect("db") as conn:
+
+        cursor = get_cursor(conn)
+
+        try:
+            print("Creating view")
+            cursor.execute(query)
+            conn.commit()
+        except Exception as e:
+            print("Error:", e)
+            conn.rollback()
+
+
+
+
+def create_trigger():
+
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        for trigger_name, trigger, in triggers.items():
+            print(f"Creating trigger {trigger_name}")
+            try:
+                cursor.execute(trigger)
+            except MySQLdb.Error as e:
+                print(e)
+            else:
+                print("Created Succesfully!")
+        # Execute the query for each set of values in the list
+        conn.commit()
 
 def insert(table:str, fields:str, values:tuple[tuple, ...]|tuple[str, ...],additional:str=""):
 
@@ -152,37 +274,12 @@ def get_book_ids():
             ]).set_index("Title")
 
 
-def create_view():
-
-    query = """
-        CREATE VIEW combined_bookdata AS
-        SELECT
-            bd.BookID,
-            bd.Title,
-            bd.PublishDate,
-            bd.Publisher,
-            bd.Description,
-            b.DecimalCode,
-            b.Status
-        FROM
-            book b
-            INNER JOIN bookdata bd ON bd.BookID = b.BookID;
-        """
-    with MySQLdb.connect("db") as conn:
-
-        cursor = get_cursor(conn)
-
-        try:
-            cursor.execute(query)
-            conn.commit()
-        except Exception as e:
-            print("Error:", e)
-            conn.rollback()
 
 def initialize():
 
     create_table(queries)
     create_view()
+    create_trigger()
 
     books_data = populate_books.read_books_data(50_000)
     insert("bookdata",

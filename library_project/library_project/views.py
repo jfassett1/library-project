@@ -180,7 +180,29 @@ def get_copy_details(decimal_code:str):
     else:
         return len(results) + 1
 
-def user_checkout(book_decimal_code):
+def user_checkout(decimal_code):
+    query = """
+    SELECT
+        b.Status,
+        COUNT(w.BookID)
+    FROM
+        waitlist as w
+        LEFT JOIN book as b ON b.BookID = w.BookID
+    WHERE
+        b.DecimalCode = %s
+    GROUP BY
+        b.BookID
+    """
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        cursor.execute(query, (decimal_code,))
+
+        # Fetch the results
+        results = cursor.fetchall()
+    if not results:
+        return True
+    else:
+        return len(results) + 1
     return
 # @login_required
 def checkout_book(request):
@@ -193,7 +215,7 @@ def checkout_book(request):
         # Check if the book is available
         if book is True:
             # Perform the checkout
-            user_checkout(body["decimal_code"])
+            response = user_checkout(body["decimal_code"])
             return JsonResponse({'success': True})
         else:
             # Add the user to the waitlist
