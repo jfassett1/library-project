@@ -184,21 +184,30 @@ def initialize():
            populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
 
     # extract and merge book data with correct book id
-    data = books_data[["Title", "publishedDate", "publisher", "description", "DecimalCode", "BookStatus", "authors", "categories"]].set_index("Title")
-    # data.sort_index(inplace=True)
-    # print(data.groupby("Title")["categories"].value_counts())
-    # print(data[["categories", "authors"]].head())
-    books = populate_books.merge(get_book_ids(), data, False, "Title").drop_duplicates(subset="DecimalCode")
-    print(books.columns)
-    # books = pd.merge(get_book_ids(), data, right_index=True, left_index=True, how='right', validate="1:m")
-    # print(books.head(), len(books), len(data))
-    # print(len(data) - len(books["DecimalCode"].unique()))
+    data = books_data[
+        [
+            "Title",
+            "publishedDate",
+            "publisher",
+            "description",
+            "DecimalCode",
+            "BookStatus",
+            "authors",
+            "categories"
+        ]
+    ].set_index("Title")
+
+    # books = pd.merge(get_book_ids(), data, "inner", left_on="Title", right_index=True)
+
+    books = populate_books.merge(
+        get_book_ids(), data, False, "Title"
+    ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
+
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
     books.reset_index()
     books = books.set_index("BookID")
-    print(books.head())
     authors = populate_books.format_combined_data_df(books, "authors")
     insert("author","BookID, Name",populate_books.books_to_tuples(authors, True)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert categories

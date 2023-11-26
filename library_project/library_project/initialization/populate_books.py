@@ -105,72 +105,6 @@ def format_combined_data_df(book_data:pd.DataFrame, column)->pd.DataFrame:
     return col_data.explode(column)
 
 
-# #Start of decimal generation
-
-# class Bookshelf:
-#     def __init__(self,ind:int=0,category:str = 'Misc'):
-#         self.category = category
-#         self.bookshelfID = ind
-#         self.full = False
-#         self.subshelves = {
-#             '01': [],
-#             '02': [],
-#             '03': [],
-#             '04': [],
-#             '05': [],
-#             '06': [],
-#             '07': [],
-#         }
-#     def append(self, bookID):
-#         for _, books in filter(lambda x: len(x[1])<30, self.subshelves.items()):
-#             books.append(bookID)
-#             break
-#         else:
-#             self.full = True
-#             return "Full"
-
-#     def read(self):
-#         print(f"Bookshelf: {self.bookshelfID}\nCategory: {self.category}")
-#         for shelf in self.subshelves.values():
-#             print(shelf)
-
-#     def index(self):
-#         finallist = []
-#         b_id = f"{self.bookshelfID:03d}"
-#         for subshelf,books in self.subshelves.items():
-#             for book_id in books:
-#                 finallist.append((f"{b_id}.{subshelf}.{book_id}",book_id,0))
-#         return finallist
-
-
-# def populate_bookshelves(books, startint=1,category:str='Misc'):
-#     """Builds bookshelf data
-#     Args: iterable of bookIDs
-
-#     Returns: List of bookshelf objects
-#     """
-#     bookshelves = [Bookshelf(startint,category)]
-#     next_bookshelf_id = startint + 1
-#     for id in books:
-#         book_added = False
-#         for bookshelf in bookshelves:
-#             result = bookshelf.append(id)
-#             if result is None:
-#                 book_added = True
-#                 break
-
-#         if not book_added:
-#             # If all bookshelves are full, create a new bookshelf
-#             new_bookshelf = Bookshelf(next_bookshelf_id)
-#             new_bookshelf.category = category
-#             bookshelves.append(new_bookshelf)
-#             new_bookshelf.append(id)  # Add the book to the new bookshelf
-#             # print(f"Created Bookshelf{len(bookshelves)} for book {i}")
-#             next_bookshelf_id += 1
-
-#     return bookshelves
-
-
 def generate_shelf_decimal(books_data: pd.DataFrame) -> pd.DataFrame:
 
     def split_into_chunks(group, chunk_size: int, shelf_num: int):
@@ -219,7 +153,7 @@ def generate_shelf_decimal(books_data: pd.DataFrame) -> pd.DataFrame:
     library["DecimalCode"] = library["DecimalCode"] + "." + library.groupby("BookID").cumcount().astype(str)
     library["BookStatus"] = np.zeros(library.shape[0], dtype=np.int16)
     print(f"Generated {shelf_num} bookshelves containing {len(books_data)} books")
-    return library[["DecimalCode", "BookID", "BookStatus"]]
+    return library[["DecimalCode","BookID", "BookStatus"]]
 
 
 def books_to_tuples(books, index:bool=False):
@@ -245,36 +179,37 @@ def read_books_data(nrows=None):
             },
         nrows=nrows
         )
-
+    # remove duplicated titles
     books_data = books_data.drop_duplicates(subset = "Title")
-    books_data["publishedDate"] = books_data["publishedDate"].fillna("-9999")
-    books_data["publishedDate"] = books_data["publishedDate"].str.replace(r'\?', '0', regex=True)
-    books_data["publishedDate"] = books_data["publishedDate"].str.extract(r"(^-?\d{,4})")
-    books_data["publishedDate"] = books_data["publishedDate"].astype('int')
+
+
+    # fill missing values
     books_data["publisher"].replace("","UNKNOWN",inplace=True)
     books_data["categories"].fillna('["Misc"]',inplace=True)
     books_data["authors"].fillna('["UNKNOWN"]',inplace=True)
     books_data["description"].fillna('None given.',inplace=True)
+    books_data["publishedDate"] = books_data["publishedDate"].fillna("-9999")
 
+    # parse publisher data
+    books_data["publishedDate"] = books_data["publishedDate"].str.replace(r'\?', '0', regex=True)
+    books_data["publishedDate"] = books_data["publishedDate"].str.extract(r"(^-?\d{,4})")
+    books_data["publishedDate"] = books_data["publishedDate"].astype('int')
 
-    books_data["publisher"] = pd.Categorical(books_data["publisher"])
-    # books_data["categories"] = pd.Categorical(books_data["categories"])
+    # fill in remaining nulls with none
     books_data = books_data.where(pd.notnull(books_data), None)
-    books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
-    print(books_data.index)
+
+    # create book ID column for use later
     books_data["BookID"] = books_data.index
+
+    # create a sample of books weighted by number of reviews
+    books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
     sample_data = books_data.sample(40_000, replace=True, weights=books_data["ratingsCount"])
 
-    # print(sample_data.iloc[0])
-    # idx = sample_data.iloc[0].name
-    # print(books_data.loc[idx])
+    # add decimal numbers to sample data
+    sample_data = pd.merge(generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
+    # this breaks stuff but in theory should work
+    # sample_data = generate_shelf_decimal(sample_data)
 
-    sample_data = pd.merge(generate_shelf_decimal(sample_data), sample_data, how="inner", left_on="BookID", right_on="BookID")
-
-    # print(sample_data.iloc[0])
-    # books_data = merge(books_data, format_combined_data_df(books_data, "authors"), both_index=True)
-    # books_data = merge(books_data,format_combined_data_df(books_data.drop_duplicates("BookID",keep='first'), "categories"), both_index=True)
-    print(sample_data.isna().sum())
     return sample_data[["BookID","Title", "publishedDate", "publisher", "description", "authors", "categories", "DecimalCode", "BookStatus"]]
 
 
