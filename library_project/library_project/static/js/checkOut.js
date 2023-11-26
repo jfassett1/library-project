@@ -16,7 +16,6 @@ function checkoutBook(decimalCode) {
         handleCheckoutResponse(data);
     })
     .catch(error => {
-        console.log(response)
         console.error('Error during fetch request:', error);
     });
 }
