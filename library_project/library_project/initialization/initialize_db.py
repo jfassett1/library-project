@@ -208,7 +208,7 @@ def initialize():
     books = populate_books.merge(
         get_book_ids(), data, False, "Title"
     ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
-
+    books = books[books["BookID"]!=1]
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
