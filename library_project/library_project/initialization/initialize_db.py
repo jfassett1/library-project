@@ -51,7 +51,7 @@ CREATE TABLE author (
 queries.append("""
 CREATE TABLE category (
     BookID INT REFERENCES bookdata(BookID),
-    CategoryName VARCHAR(200) DEFAULT 'UNKNOWN',
+    CategoryName VARCHAR(500) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, CategoryName)
 );""")
 queries.append("""
@@ -139,7 +139,7 @@ def get_book_ids():
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         query = """
-        SELECT * FROM bookdata;
+        SELECT bd.BookID, bd.Title FROM bookdata bd ORDER BY bd.BookID;
         """
         try:
             cursor.execute(query)
@@ -148,10 +148,7 @@ def get_book_ids():
 
     return pd.DataFrame(cursor.fetchall(), columns=[
             "BookID",
-            "Title",
-            "PublishDate",
-            "Publisher",
-            "Description",
+            "Title"
             ]).set_index("Title")
 
 
@@ -187,25 +184,45 @@ def initialize():
     create_table(queries)
     create_view()
 
-    books_data = populate_books.read_books_data()
+    books_data = populate_books.read_books_data(50_000)
     insert("bookdata",
            "Title, PublishDate, Publisher, Description",
            populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
 
     # extract and merge book data with correct book id
-    data = books_data[["Title", "publishedDate", "publisher", "description", "DecimalCode", "BookStatus", "authors", "categories"]]
-    books = populate_books.merge(get_book_ids(), data, False, "Title").drop_duplicates(subset="DecimalCode")
+    data = books_data[
+        [
+            "Title",
+            "publishedDate",
+            "publisher",
+            "description",
+            "DecimalCode",
+            "BookStatus",
+            "authors",
+            "categories"
+        ]
+    ].set_index("Title")
+
+    # books = pd.merge(get_book_ids(), data, "inner", left_on="Title", right_index=True)
+
+    books = populate_books.merge(
+        get_book_ids(), data, False, "Title"
+    ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
 
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
-    insert("author","BookID, Name",populate_books.format_combined_data(books, "authors")," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
+    books.reset_index()
+    books = books.set_index("BookID")
+    authors = populate_books.format_combined_data_df(books, "authors")
+    insert("author","BookID, Name",populate_books.books_to_tuples(authors, True)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert categories
-    insert("category","BookID, CategoryName", populate_books.format_combined_data(books, "categories"), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
+    categories = populate_books.format_combined_data_df(books, "categories")
+    insert("category","BookID, CategoryName", populate_books.books_to_tuples(categories, True), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
 
     # Create 100 fake patrons
     fake = Faker()
-    n_patrons = 100
+    n_patrons = 1000
     print(f"Building {n_patrons} patron accounts")
     values = tuple(
         zip([fake.name() for _ in range(n_patrons)],
