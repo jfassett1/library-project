@@ -180,29 +180,33 @@ def get_copy_details(decimal_code:str):
     else:
         return len(results) + 1
 
-def user_checkout(decimal_code):
+def user_checkout(user, decimal_code):
+    """CREATE TABLE checkout (
+    Patron INT REFERENCES patron(AccID),
+    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
+    TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),
+    Status TINYINT NOT NULL,
+    PRIMARY KEY (DecimalCode, TimeOut, )
+);"""
     query = """
-    SELECT
-        b.Status,
-        COUNT(w.BookID)
-    FROM
-        waitlist as w
-        LEFT JOIN book as b ON b.BookID = w.BookID
-    WHERE
-        b.DecimalCode = %s
-    GROUP BY
-        b.BookID
+    INSERT INTO checkout (Patron, DecimalCode, Status)
+    VALUES (%s, %s, %s)
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
-        cursor.execute(query, (decimal_code,))
+        try:
+            cursor.execute(query, (user, decimal_code,1))
+            conn.commit()
 
-        # Fetch the results
-        results = cursor.fetchall()
-    if not results:
-        return True
-    else:
-        return len(results) + 1
+        except MySQLdb.Error as e:
+            print(e)
+            return False
+        else:
+            print(f"Checkout of {decimal_code} by {user} successful")
+            return True
+
+
 
 
 @login_required
@@ -216,8 +220,8 @@ def checkout_book(request):
         # Check if the book is available
         if book is True:
             # Perform the checkout
-            response = user_checkout(body["decimal_code"])
-            return JsonResponse({'success': True})
+            response = user_checkout(request.user, body["decimal_code"])
+            return JsonResponse({'success': response})
         else:
             # Add the user to the waitlist
             # (You would typically have a waitlist model for more complex scenarios)

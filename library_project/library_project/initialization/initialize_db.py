@@ -134,7 +134,7 @@ CREATE TABLE book (
 
 queries.append(
 """CREATE TABLE checkout (
-    Patron INT REFERENCES patron(AccID),
+    Patron VARCHAR(150) REFERENCES auth_user(username),
     DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
     TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
     Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),

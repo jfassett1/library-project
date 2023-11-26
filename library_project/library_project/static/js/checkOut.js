@@ -10,12 +10,10 @@ function checkoutBook(decimalCode) {
         },
         body: JSON.stringify({decimal_code:decimalCode}),
     })
-    .then(response => {
-        console.log(response)
-        console.log(response.json())
-    })
+    .then(response => response.json())
     .then(data => {
         // Handle the response from the Django backend
+        console.log(data);
         handleCheckoutResponse(data);
     })
     .catch(error => {
