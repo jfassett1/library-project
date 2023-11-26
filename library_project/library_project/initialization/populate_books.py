@@ -187,7 +187,7 @@ def read_books_data(nrows=None):
     books_data["publisher"].replace("","UNKNOWN",inplace=True)
     books_data["categories"].fillna('["Misc"]',inplace=True)
     books_data["authors"].fillna('["UNKNOWN"]',inplace=True)
-    books_data["description"].fillna('None given.',inplace=True)
+    books_data["description"].fillna('',inplace=True)
     books_data["publishedDate"] = books_data["publishedDate"].fillna("-9999")
 
     # parse publisher data
