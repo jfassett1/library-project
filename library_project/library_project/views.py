@@ -285,15 +285,14 @@ def add_row(request):
 
             title = form.cleaned_data['title']
             author = form.cleaned_data['author']
-            genre = form.cleaned_data['genre']
             publisher = form.cleaned_data['publisher']
-            categoryID = form.cleaned_data['categoryID']
+            category = form.cleaned_data['category']
             year = form.cleaned_data['year']
             descript = form.cleaned_data['desc']
 
-            query_bookdata = f"INSERT INTO bookdata (Title, PublishDate, PublisherID, CategoryID, Description) VALUES ('{title}',{year},{publisher},{categoryID},'{descript}')"
+            query_bookdata = f"INSERT INTO bookdata (Title, PublishDate, Publisher, Description) VALUES ('{title}',{year},'{publisher}','{descript}')"
             query_author = "INSERT INTO author (BookID, Name) VALUES (%s, %s)"
-
+            query_category = "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             queries = []
 
             try:
@@ -303,10 +302,11 @@ def add_row(request):
                 bookID = cursor.lastrowid
                 #Author Query
                 cursor.execute(query_author,(bookID,author))
+                cursor.execute(query_category,(bookID,category))
                 #
 
 
-                cursor.execute
+                # cursor.execute
 
                 conn.commit()
                 message = mark_safe(f'Insert Successful!<br>{bookID}')
