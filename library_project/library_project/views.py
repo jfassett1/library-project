@@ -111,12 +111,15 @@ def homepage(request):
         ORDER BY c.TimeOut
         LIMIT 1;"""
         cursor.execute(query)
-        info = cursor.fetchall()[0][0]
-
+        try:
+            info = cursor.fetchall()[0][0]
+        except:
+            info = ""
+            return render(request,"home.html",{"form":form,"info":info})
         #Recommendation code
-        model = Doc2Vec.load(r"./recommendation/d2v.model")
-        neigh = joblib.load(r"./recommendation/neighbors.pkl")
-        titlemap = joblib.load(r"./recommendation/titlemap.pkl")
+        model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
+        neigh = joblib.load(r"./library_project/recommendation/neighbors.pkl")
+        titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
 
         sample = model.infer_vector(preprocess_documents([info])[0])
         print(sample)
