@@ -109,13 +109,12 @@ def homepage(request):
         INNER JOIN bookdata as b
         ON c.BookID = b.BookID
         WHERE c.Patron ='{username}'
-        ORDER BY c.TimeOut
+        ORDER BY c.TimeOut DESC
         LIMIT 1;"""
         cursor.execute(query)
         try:
             info = cursor.fetchall()[0][0]
-        except:
-            info = ""
+        except MySQLdb.Error:
             return render(request,"home.html",{"form":form,"info":info})
         #Recommendation code
         model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
@@ -123,12 +122,13 @@ def homepage(request):
         titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
 
         sample = model.infer_vector(preprocess_documents([info])[0])
-        print(sample)
+        # print(sample)
         dist, idxs = neigh.kneighbors([sample],5)
         recommendation_dict = []
-        for i in idxs[0]:
+        print(titlemap[idxs[0][0]])
+        for i in idxs[0][1:]:
             recommendation_dict.append(titlemap[i])
-            print(titlemap[i])
+            # print(titlemap[i])
 
         return render(request,"home.html",{"form":form,"info":recommendation_dict})
     return render(request,"home.html",{"form":form,"info":""})
