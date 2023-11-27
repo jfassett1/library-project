@@ -47,18 +47,36 @@ def profile_view(request):
         username = identity_dict['username']
         login = True
         message = user_dict
+        book_checkout = {"Message":"No data"}
         with MySQLdb.connect("db") as conn:
             cursor = get_cursor(conn)
             try:
-                query = f"SELECT DecimalCode FROM checkout WHERE Patron = '{username}'"
+                query = f"""SELECT bd.title, c.DecimalCode,c.Due
+                FROM checkout as c 
+                INNER JOIN book as b
+                ON c.DecimalCode = b.DecimalCode
+                INNER JOIN bookdata as bd
+                ON b.BookID = bd.BookID
+                WHERE Patron = '{username}'"""
                 cursor.execute(query)
                 data = cursor.fetchall()
+                data = list(data)
+                book_checkout = {}
+                for idx,entry in enumerate(data):
+                    title = entry[0]
+                    decimal = entry[1]
+                    due = entry[2]
+                    book_checkout[idx+1] = f"{title} | {decimal} | Due on: {due}"
+
+
+            
+
             except MySQLdb.Error as e:
                 data = e
 
     else:
         return redirect('login')
-    return render(request, "registration/profile.html", {'identity':identity_dict,'system':system_info_dict,'status':status_dict,'username':username,"data":data})
+    return render(request, "registration/profile.html", {'identity':identity_dict,'system':system_info_dict,'status':status_dict,'username':username,"data":book_checkout})
 
 
 

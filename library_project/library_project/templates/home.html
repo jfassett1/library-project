@@ -5,18 +5,6 @@
 {% block body %}
 
 
-{%if login%}
-<h2>Welcome {{Name}}!</h2>
-<a href = 'accounts/exit/'>Logout</a>
-{%else%}
-<h2>You are not logged in</h2>
-<a href = 'accounts/login/'>Login</a>
-<a href = 'accounts/signup'>Sign up</a>
-{%endif%}
-
 {% include 'search/searchbar.html' %}
-<div class = "container">
-<a href = 'accounts/signup'>Sign up for an account!</a>
-</div>
 <a href = "update/">CRUD Page</a>
 {% endblock %}

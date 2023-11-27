@@ -15,9 +15,20 @@
         {% for name, value in system.items %}
             <p><b>{{ name|title }}</b>: {{ value }}</p>
         {% endfor %}
-        </table><br>
+    </table><br>
+    <h3>User Status</h3>
+    <table>
+        {% for name, value in status.items %}
+            <p><b>{{ name|title }}</b>: {{ value }}</p>
+        {% endfor %}
+    </table><br>
     <h3>Book Checkouts:</h3>
-    {{data}}
+    <table style = "border: 1cm;">
 
+        {% for name, value in data.items %}
+            <li><b>{{ name|title }}</b>: {{ value }}</li>
+        {% endfor %}
+    </table><br>
+<a href = "{%url 'home' %}">Back</a>
 </div>
 {%endblock%}
