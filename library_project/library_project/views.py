@@ -86,14 +86,7 @@ def construct_query(
 
 def homepage(request):
     form = SearchForm()
-    login = False
-
-    firstname = ""
-    if request.user.is_authenticated:
-        user = User.objects.get(username=request.user.username)
-        login = True
-        firstname = user.first_name
-        return render(request,"home.html",{"form":form})
+    return render(request,"home.html",{"form":form})
     # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
 def search(request):
