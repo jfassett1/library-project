@@ -82,6 +82,7 @@ def profile_view(request):
                     title = entry[0]
                     decimal = entry[1]
                     due = entry[2]
+                    #Marked safe for convenience
                     book_checkout[idx+1] = mark_safe(f"<br>{title}<br>{decimal} <br> Due on: {due}")
                     time_difference = due - datetime.date.today()
 

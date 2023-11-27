@@ -93,7 +93,8 @@ def homepage(request):
         user = User.objects.get(username=request.user.username)
         login = True
         firstname = user.first_name
-    return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
+        return render(request,"home.html",{"form":form})
+    # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
 def search(request):
     if request.method == "GET":

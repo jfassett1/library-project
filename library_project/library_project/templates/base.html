@@ -1,4 +1,4 @@
-{%load static%}
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -6,38 +6,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Website{% endblock %}</title>
-    <link rel="stylesheet" type="text/css" href="{%static 'CSS/style.css' %}">
-
+    <link rel="stylesheet" type="text/css" href="{% static 'CSS/style.css' %}">
+    <style>
+        ul {
+            list-style-type: none; /* Remove bullet points */
+            padding: 0; /* Remove default padding */
+        }
+    </style>
     {% block head %}
-    <div class = "header" style = "background-color: lightblue; padding:1%;">
+    <div class="header" style="background-color: lightblue; padding: 1%;">
         <!-- Checks if user is logged in -->
-        {%if login%}
-        <h2>Welcome {{Name}}!</h2>
-        {%if staff%}
-        <h3 style = "color:red">Librarian Permissions</h3>
-        <a href = "{%url 'update'%}">Librarian Page</a><br>
-        {%endif%}
-        <a href = "{%url 'profile'%}">Profile</a><br>
-        <a href = "{%url 'logout' %}">Logout</a><br>
-        {{time}}
-
+        {% if login %}
+        <h2>Welcome {{ Name }}!</h2>
+        {% if staff %}
+        <h3 style="color: red">Librarian Permissions</h3>
+        <ul>
+            <li><a href="{% url 'update' %}">Librarian Page</a></li>
+        </ul>
+        {% endif %}
+        <ul>
+            <li><a href="{% url 'profile' %}">Profile</a></li>
+            <li><a href="{% url 'logout' %}">Logout</a></li>
+            <li><a href="{% url 'home' %}">Home</a></li>
+        </ul>
 
         <!-- Checks if user is staff -->
 
-
-        {%else%}
+        {% else %}
         <h2>You are not logged in</h2>
-        <a href = "{% url 'login'%}">Login</a><Br>
-        <a href = "{% url 'signup'%}">Sign up</a>
-        {%endif%}
-        </div>
-        {% endblock %}
+        <ul>
+            <li><a href="{% url 'login' %}">Login</a></li>
+            <li><a href="{% url 'signup' %}">Sign up</a></li>
+        </ul>
+        {% endif %}
+    </div>
+    {% endblock %}
 </head>
 <body>
     {% block body %}
-        {% endblock %}
+    {% endblock %}
     {% block footer %}
-    <a href = "{% url 'home'%}">Home</a>
-        {% endblock %}
+    {% endblock %}
 </body>
 </html>

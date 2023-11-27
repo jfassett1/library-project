@@ -1,5 +1,5 @@
 {%extends 'base.html'%}
-<style>
+<!-- <style>
     .secretbutton {
       display: inline-block;
       font-family: 'Gabriela', serif;
@@ -9,11 +9,11 @@
       padding: 0.5em 0.2em 0.8em 0.5em;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Add text-shadow */
     }
-  </style>
+  </style> -->
   
 {%block body%}
 <div class = "container">
-    <h2>Account Page for {{username}}</h2>
+    <h2 style="background-color: lightblue; text-align: center; border-radius: 10%; margin: auto;">Account Page for {{username}}</h2>
     {{user_Data}}
     <h3>Personal Data</h3>
     <table class = 'datatable'>
@@ -21,7 +21,6 @@
         <p><b>{{ name|title }}</b>: {{ value }}</p>
     {% endfor %}
     </table><br>
-    {{overdue}}
     <hr>
 
     <h3>Account information</h3>
