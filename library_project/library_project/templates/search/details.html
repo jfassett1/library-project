@@ -20,7 +20,7 @@
 <div class="container">
     <h3>Entries</h3>
     <button onclick="checkoutBook({{results.book_id.0}})">
-    {% if results.best_status.0 == 0 %}
+    {% if results.best_status == 0 %}
     Check Out
     {% else %}
     Join Waitlist
