@@ -60,7 +60,7 @@ def construct_query(
     # Add pagination
     offset = (page_number - 1) * results_per_page
     query += f" LIMIT {results_per_page} OFFSET {offset};"
-    logger.info(query)
+    # logger.info(query)
 
     # return query, search_params
     with MySQLdb.connect("db") as conn:
@@ -74,7 +74,7 @@ def construct_query(
         # Fetch the results
         results = cursor.fetchall()
 
-    print(*results, sep="\n")
+    # print(*results, sep="\n")
 
     return results, query, search_params
 
@@ -132,7 +132,9 @@ def get_book_details(bookid:int):
         cb.Description AS 'Description',
         COUNT(*) AS 'Number of Copies',
         cb.DecimalCode AS 'Book Codes',
-        cb.Status AS 'Status'
+        cb.Status AS 'Status',
+        MIN(cb.Status) AS 'Best Status',
+        MIN(cb.BookID) AS 'ID'
     FROM
         combined_bookdata cb
         RIGHT JOIN category c ON cb.BookID = c.BookID
@@ -148,65 +150,81 @@ def get_book_details(bookid:int):
 
         # Fetch the results
         results = cursor.fetchall()
-    # print(results)
+    print(results)
     return keys_values_to_dict(
         [
-            "title",  "authors", "category", "publisher","publishdate","description", "copies", "codes", "status"
+            "title",  "authors", "category", "publisher","publishdate","description", "copies", "codes", "status", "best_status", "book_id"
         ],
         [tuple(r) for r in zip(*results)]
     )
 
-def get_copy_details(decimal_code:str):
+def detailed_results(request, bookid):
+    results = get_book_details(bookid)
+    results["books"] = list(zip(results["codes"], results["status"]))
+    return render(request, "search/details.html", {"results":results})
+
+def get_copy_details(book_id:str):
     query = """
     SELECT
-        b.Status,
-        COUNT(w.BookID)
+        MIN(b.Status)
     FROM
-        waitlist as w
-        LEFT JOIN book as b ON b.BookID = w.BookID
+        book b
     WHERE
-        b.DecimalCode = %s
+        b.BookID = %s
     GROUP BY
         b.BookID
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
-        cursor.execute(query, (decimal_code,))
+        cursor.execute(query, (book_id,))
 
         # Fetch the results
         results = cursor.fetchall()
-    if not results:
-        return True
-    else:
-        return len(results) + 1
+    print(f"best status for {book_id}:",results)
+    # no results means no one in waitlist
+    return not results[0][0]
 
-def user_checkout(user, decimal_code):
-    """CREATE TABLE checkout (
-    Patron INT REFERENCES patron(AccID),
-    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
-    TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
-    Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),
-    Status TINYINT NOT NULL,
-    PRIMARY KEY (DecimalCode, TimeOut, )
-);"""
+def user_checkout(user, book_id):
     query = """
     INSERT INTO checkout (Patron, DecimalCode, Status)
-    VALUES (%s, %s, %s)
+    VALUES (
+        %s,
+        (
+            SELECT MIN(b.DecimalCode) FROM book b WHERE b.BookID = %s AND b.Status = 0
+        ),
+        %s
+    );
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(query, (user, decimal_code,1))
+            cursor.execute(query, (user, book_id,1))
             conn.commit()
 
         except MySQLdb.Error as e:
             print(e)
             return False
         else:
-            print(f"Checkout of {decimal_code} by {user} successful")
+            print(f"Checkout of {book_id} by {user} successful")
             return True
 
+def user_waitlist(user, book_id):
+    query = """
+    INSERT INTO waitlist (Patron, BookID)
+    VALUES (%s,%s);
+    """
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        try:
+            cursor.execute(query, (user, book_id))
+            conn.commit()
 
+        except MySQLdb.Error as e:
+            print(e)
+            return False
+        else:
+            print(f"Waitlist of {book_id} by {user} successful")
+            return True
 
 
 @login_required
@@ -215,27 +233,24 @@ def checkout_book(request):
     if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
         body = json.loads(body_unicode)
+        print(body)
         book = get_copy_details(**body)
 
         # Check if the book is available
         if book is True:
             # Perform the checkout
-            response = user_checkout(request.user, body["decimal_code"])
+            response = user_checkout(request.user, body["book_id"])
             return JsonResponse({'success': response})
         else:
             # Add the user to the waitlist
-            # (You would typically have a waitlist model for more complex scenarios)
-            return JsonResponse({'waitlisted': book})
+            response = user_waitlist(request.user, body["book_id"])
+            return JsonResponse({'waitlisted': response})
 
     # If the request method is not POST, return an error response
     return JsonResponse({'error': 'Invalid request method'})
 
 
-def detailed_results(request, bookid):
-    results = get_book_details(bookid)
-    results["books"] = list(zip(results["codes"], results["status"]))
-    # print(results)
-    return render(request, "search/details.html", {"results":results})
+
 
 def landing(request):
     return render(request,"landing.html")

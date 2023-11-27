@@ -143,7 +143,7 @@ queries.append(
 );""")
 queries.append("""CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
-    Patron INT REFERENCES patron(AccID),
+    Patron VARCHAR(150) REFERENCES auth_user(username),
     BookID INT REFERENCES bookdata(BookID)
 );""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
@@ -161,10 +161,6 @@ def create_table(queries):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
 
-        try:
-            cursor.execute("DELIMITER //")
-        except MySQLdb.Error as e:
-            print(e)
         for table,tablename in zip(queries,list_of_tables):
             print(f"Creating table {tablename}")
             try:

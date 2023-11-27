@@ -1,6 +1,6 @@
-function checkoutBook(decimalCode) {
+function checkoutBook(bookID) {
     // Perform AJAX request to Django backend using fetch
-    console.log(JSON.stringify({decimal_code:decimalCode}))
+    console.log(JSON.stringify({book_id:bookID}))
     fetch('/checkout-book/', {
         method: 'POST',
         headers: {
@@ -8,7 +8,7 @@ function checkoutBook(decimalCode) {
             // You may need to include additional headers like CSRF token
             'X-CSRFToken': csrfToken // Define getCSRFToken() function
         },
-        body: JSON.stringify({decimal_code:decimalCode}),
+        body: JSON.stringify({book_id:bookID}),
     })
     .then(response => response.json())
     .then(data => {
