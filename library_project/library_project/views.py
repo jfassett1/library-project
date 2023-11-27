@@ -339,9 +339,9 @@ def add_row(request):
             publisher = form.cleaned_data['publisher']
             category = form.cleaned_data['category']
             year = form.cleaned_data['year']
-            descript = form.cleaned_data['desc']
+            descript = form.cleaned_data['desc'].replace("'","''")
 
-            query_bookdata = f"INSERT INTO bookdata (Title, PublishDate, Publisher, Description) VALUES ('{title}',{year},'{publisher}','{descript}')"
+            query_bookdata = f"""INSERT INTO bookdata (Title, PublishDate, Publisher, Description) VALUES ('{title}',{year},'{publisher}','{descript}')"""
             query_author = "INSERT INTO author (BookID, Name) VALUES (%s, %s)"
             query_category = "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             queries = []
