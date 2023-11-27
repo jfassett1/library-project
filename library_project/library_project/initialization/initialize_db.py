@@ -4,6 +4,7 @@ import populate_books
 from faker import Faker
 from db_connect import get_cursor
 from collections import Counter
+import time
 # from django.contrib.auth.models import User
 
 
@@ -356,4 +357,7 @@ def initialize():
 
 # #Main
 if __name__ == "__main__":
+    start_time = time.time()
     initialize()
+    end_time = time.time()-start_time
+    print(f"It took {end_time:.2f} seconds to initialize")

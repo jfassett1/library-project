@@ -1,5 +1,16 @@
 {%extends 'base.html'%}
-
+<style>
+    .secretbutton {
+      display: inline-block;
+      font-family: 'Gabriela', serif;
+      color: #FFF;
+      border-radius: 20px;
+      background: rgba(203, 43, 43, 0.9);
+      padding: 0.5em 0.2em 0.8em 0.5em;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Add text-shadow */
+    }
+  </style>
+  
 {%block body%}
 <div class = "container">
     <h2>Account Page for {{username}}</h2>
@@ -10,25 +21,66 @@
         <p><b>{{ name|title }}</b>: {{ value }}</p>
     {% endfor %}
     </table><br>
+    {{overdue}}
+    <hr>
+
     <h3>Account information</h3>
     <table>
         {% for name, value in system.items %}
             <p><b>{{ name|title }}</b>: {{ value }}</p>
         {% endfor %}
     </table><br>
+
+    <hr>
     <h3>User Status</h3>
     <table>
         {% for name, value in status.items %}
             <p><b>{{ name|title }}</b>: {{ value }}</p>
         {% endfor %}
     </table><br>
-    <h3>Book Checkouts:</h3>
-    <table style = "border: 1cm;">
 
-        {% for name, value in data.items %}
-            <li><b>{{ name|title }}</b>: {{ value }}</li>
-        {% endfor %}
-    </table><br>
+    <hr>
+
+    <h3>Book Checkouts:</h3>
+    <!-- If there are overdue books -->
+    {% if overdue %}
+    <b style = color:red>You have overdue books!</b>
+    {%for book in overdue_books%}
+        <li>{{book}}</li>
+    {%endfor%}
+    <br>
+    {%endif%}
+    <table style="background-color: lightblue; text-align: center; border-radius: 10%; margin: auto;">
+        {% if checkoutdata %}
+            <tr>
+                <th></th>
+                <th>Books</th>
+            </tr>
+            {% for name, value in checkoutdata.items %}
+            <tr>
+                <td><b>{{ name|title }}</b></td>
+                <td>{{ value }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="2">No Checkout data found</td>
+            </tr>
+        {% endif %}
+    </table>
+    <hr>
+    {%if not staff%}
+    <!-- Super secret button for giving staff permissions -->
+    This button gives you librarian permissions:<br>
+    <div class = "secretbutton" style = "display: inline-block;
+    font-family: 'Gabriela', serif;
+    color: #FFF;
+    border-radius: 20px;
+    background: rgba(203, 43, 43, 0.9);
+    padding: 0.5em 0.2em 0.8em 0.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);"><a href = "{%url 'make_staff'%}" style = "color:#FFF">Give Librarian Perms</a></div>
+    <br><br>
+    {%endif%}
 <a href = "{%url 'home' %}">Back</a>
 </div>
 {%endblock%}

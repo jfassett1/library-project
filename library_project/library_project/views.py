@@ -4,6 +4,8 @@ import logging
 # from . import initialize_db
 import MySQLdb
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
@@ -17,6 +19,8 @@ logger = logging.getLogger('django')
 # BOOK_STATUS = { "":2,"In stock":0,
 # "Out of stock":1,
 # "Reserved":2 }
+
+
 
 def construct_query(
     search_term,
@@ -273,6 +277,7 @@ def patron(request):
 
     return render(request,"patron.html")
 
+@staff_member_required
 def update(request):
     return render(request,"update/update.html",{"addForm":addForm(),
                                                 "rmForm":rmForm()})
