@@ -1,0 +1,23 @@
+{%extends 'base.html'%}
+
+{%block body%}
+<div class = "container">
+    <h2>Account Page for {{username}}</h2>
+    {{user_Data}}
+    <h3>Personal Data</h3>
+    <table class = 'datatable'>
+    {% for name, value in identity.items %}
+        <p><b>{{ name|title }}</b>: {{ value }}</p>
+    {% endfor %}
+    </table><br>
+    <h3>Account information</h3>
+    <table>
+        {% for name, value in system.items %}
+            <p><b>{{ name|title }}</b>: {{ value }}</p>
+        {% endfor %}
+        </table><br>
+    <h3>Book Checkouts:</h3>
+    {{data}}
+
+</div>
+{%endblock%}
