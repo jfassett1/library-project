@@ -320,25 +320,24 @@ def train_knn(books:pd.DataFrame):
     books = books.reset_index()
 
     joblib.dump(books["Title"].to_dict(), "../recommendation/titlemap.pkl",)
-    descriptions_to_vec = Doc2Vec.load("../recommendation/d2v_descriptions.model")
     title_to_vec = Doc2Vec.load("../recommendation/d2v.model")
     print("creating title vectors")
     book_vecs = []
     for book in books["Title"]:
-        book_vecs.append(title_to_vec.infer_vector(preprocess_documents([book])[0]))
+        book_vecs.append(title_to_vec.infer_vector(preprocess_documents([book])[0])) # type: ignore
     print("training title knn")
     book_vecs = np.array(book_vecs)
     neigh = NearestNeighbors(n_neighbors=5, metric='cosine')
     neigh.fit(book_vecs)
     joblib.dump(neigh, "../recommendation/neighbors.pkl")
 
-    print("creating description vectors")
-
+    # print("creating description vectors")
     # book_vecs = []
     # for book in books["description"]:
     #     book_vecs.append(descriptions_to_vec.infer_vector(preprocess_documents([book])[0]))
     # book_vecs = np.array(book_vecs)
     # print("training description knn")
+    # descriptions_to_vec = Doc2Vec.load("../recommendation/d2v_descriptions.model")
     # neigh = NearestNeighbors(n_neighbors=5, metric='cosine')
     # neigh.fit(book_vecs)
     # joblib.dump(neigh, "../recommendation/desc_neighbors.pkl")
