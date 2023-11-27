@@ -9,6 +9,6 @@
 
 
 {% for val in info %}
-<li><a href = "url 'details/{{val.0.1}}'">{{val.0.0}}</a></li><br>
+<li><a href="{% url 'book-details' val.0.1 %}">{{ val.0.0 }}</a></li><br>
 {% endfor %}
 </div>
