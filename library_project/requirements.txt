@@ -7,3 +7,4 @@ pandas
 faker
 scikit-learn
 gensim
+numpy

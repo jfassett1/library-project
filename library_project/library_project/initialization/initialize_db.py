@@ -1,11 +1,17 @@
 import sys
 import MySQLdb
+import joblib
+import numpy as np
 import pandas as pd
 import populate_books
 from faker import Faker
 from db_connect import get_cursor
 from collections import Counter
 import time
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from gensim.parsing.preprocessing import preprocess_documents
+from sklearn.neighbors import NearestNeighbors
+
 # from django.contrib.auth.models import User
 
 
@@ -235,7 +241,7 @@ def create_view():
 
         try:
             print("Creating view")
-            cursor.execute(views)
+            cursor.execute(views[0])
             conn.commit()
             print("View created succesfully!")
         except Exception as e:
@@ -310,14 +316,34 @@ def get_book_ids():
             "Title"
             ]).set_index("Title")
 
+def train_knn(books:pd.DataFrame):
+    books = books.reset_index()
 
+    joblib.dump(books["Title"].to_dict(), "../recommendation/titlemap.pkl",)
+    descriptions_to_vec = Doc2Vec.load("../recommendation/d2v_descriptions.model")
+    title_to_vec = Doc2Vec.load("../recommendation/d2v.model")
+    print("creating title vectors")
+    book_vecs = []
+    for book in books["Title"]:
+        book_vecs.append(title_to_vec.infer_vector(preprocess_documents([book])[0]))
+    print("training title knn")
+    book_vecs = np.array(book_vecs)
+    neigh = NearestNeighbors(n_neighbors=5, metric='cosine')
+    neigh.fit(book_vecs)
+    joblib.dump(neigh, "../recommendation/neighbors.pkl")
 
-def initialize():
+    print("creating description vectors")
 
-    create_table()
-    create_view()
-    create_trigger()
+    book_vecs = []
+    for book in books["description"]:
+        book_vecs.append(descriptions_to_vec.infer_vector(preprocess_documents([book])[0]))
+    book_vecs = np.array(book_vecs)
+    print("training description knn")
+    neigh = NearestNeighbors(n_neighbors=5, metric='cosine')
+    neigh.fit(book_vecs)
+    joblib.dump(neigh, "../recommendation/desc_neighbors.pkl")
 
+def gen_insert_data():
     books_data = populate_books.read_books_data(50_000)
     insert("bookdata",
            "Title, PublishDate, Publisher, Description",
@@ -338,11 +364,14 @@ def initialize():
     ].set_index("Title")
 
     # books = pd.merge(get_book_ids(), data, "inner", left_on="Title", right_index=True)
+    updated_ids = get_book_ids()
 
     books = populate_books.merge(
-        get_book_ids(), data, False, "Title"
+        updated_ids, data, False, "Title"
     ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
     books = books[books["BookID"]!=1]
+    train_knn(updated_ids)
+
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
@@ -363,6 +392,16 @@ def initialize():
             [fake.address() for _ in range(n_patrons)],
             [fake.unique.email() for _ in range(n_patrons)]))
     insert("patron","Name, Address, Email",values)
+
+
+
+def initialize():
+
+    create_table()
+    create_view()
+    create_trigger()
+    gen_insert_data()
+
 
 
 #     # TODO: #7 recieve error about incorrect django settings if attempt to run
@@ -414,9 +453,11 @@ if __name__ == "__main__":
     if "table" in sys.argv:
         refresh("TABLE")
         create_table()
+        gen_insert_data()
     if "view" in sys.argv:
         refresh("VIEW")
         create_view()
+
 
     end_time = time.time()-start_time
     print(f"It took {end_time:.2f} seconds to initialize")

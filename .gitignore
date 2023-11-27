@@ -10,3 +10,4 @@ library_project/library_project/recommendation/d2v.model.dv.vectors.npy
 library_project/library_project/recommendation/d2v.model.syn1neg.npy
 library_project/library_project/recommendation/d2v.model.wv.vectors.npy
 library_project/library_project/recommendation/neighbors.pkl
+library_project/library_project/recommendation/titlemap.pkl
