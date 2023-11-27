@@ -15,6 +15,14 @@ from .forms import SearchForm, addForm, rmForm
 from .initialization.db_connect import get_cursor
 from django.contrib.auth.models import User
 
+import joblib
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from gensim.parsing.preprocessing import preprocess_documents
+from sklearn.neighbors import NearestNeighbors
+
+
+
+
 logger = logging.getLogger('django')
 # BOOK_STATUS = { "":2,"In stock":0,
 # "Out of stock":1,
@@ -86,7 +94,39 @@ def construct_query(
 
 def homepage(request):
     form = SearchForm()
-    return render(request,"home.html",{"form":form})
+    info = False
+    if request.user.is_authenticated:
+        #SQL stuff
+        conn = MySQLdb.connect('db')
+        cursor = get_cursor(conn)
+        user = User.objects.get(username=request.user.username)
+
+        username = user.username
+
+        query = f"""SELECT b.Title
+        FROM checkout as c
+        INNER JOIN bookdata as b
+        ON c.BookID = b.BookID
+        WHERE c.Patron ='{username}'
+        ORDER BY c.TimeOut
+        LIMIT 1;"""
+        cursor.execute(query)
+        info = cursor.fetchall()[0][0]
+
+        #Recommendation code
+        model = Doc2Vec.load(r"./recommendation/d2v.model")
+        neigh = joblib.load(r"./recommendation/neighbors.pkl")
+        titlemap = joblib.load(r"./recommendation/titlemap.pkl")
+
+        sample = model.infer_vector(preprocess_documents([info])[0])
+        print(sample)
+        dist, idxs = neigh.kneighbors([sample],5)
+        recommendation_dict = []
+        for i in idxs[0]:
+            recommendation_dict.append(titlemap[i])
+            print(titlemap[i])
+
+    return render(request,"home.html",{"form":form,"info":info})
     # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
 def search(request):
@@ -179,6 +219,8 @@ def detailed_results(request, bookid):
     results["books"] = list(zip(results["codes"], results["status"]))
     results["best_status"] = min(results["status"])
     return render(request, "search/details.html", {"results":results})
+
+
 
 def get_copy_details(book_id:str):
     query = """
@@ -339,9 +381,9 @@ def add_row(request):
             publisher = form.cleaned_data['publisher']
             category = form.cleaned_data['category']
             year = form.cleaned_data['year']
-            descript = form.cleaned_data['desc']
+            descript = form.cleaned_data['desc'].replace("'","''")
 
-            query_bookdata = f"INSERT INTO bookdata (Title, PublishDate, Publisher, Description) VALUES ('{title}',{year},'{publisher}','{descript}')"
+            query_bookdata = f"""INSERT INTO bookdata (Title, PublishDate, Publisher, Description) VALUES ('{title}',{year},'{publisher}','{descript}')"""
             query_author = "INSERT INTO author (BookID, Name) VALUES (%s, %s)"
             query_category = "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             queries = []
