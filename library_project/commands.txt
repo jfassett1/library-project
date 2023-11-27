@@ -7,5 +7,5 @@ docker exec -it db-1 /bin/bash
 # commands for initializing tables on django_container
 # ONLY RUN 1x
 python manage.py migrate
-python manage.py makemigrations library_project
-python manage.py migrate library_project
+# python manage.py makemigrations library_project
+# python manage.py migrate library_project

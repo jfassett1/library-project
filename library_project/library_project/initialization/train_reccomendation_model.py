@@ -22,7 +22,7 @@ books = populate_books.read_books_data().drop_duplicates("Title")
 #                 dm=0,
 #                 epochs=100)
 # model.save("d2v_titles.model")
-description =[TaggedDocument(doc, [i]) for i, doc in enumerate(preprocess_documents(books["description"]))]
+description =[TaggedDocument(doc, [i]) for i, doc in enumerate(preprocess_documents(books["description"])) if doc]
 model_description = Doc2Vec(description,
                 vector_size=100,
                 window=5,
@@ -30,7 +30,7 @@ model_description = Doc2Vec(description,
                 workers=50,
                 dm=0,
                 epochs=100)
-model_description.save("d2v_descriptions.model")
+model_description.save("../recommendation/d2v_descriptions.model")
 
 book_vecs = np.array([model_description.dv[i] for i in range(len(books))])
 
