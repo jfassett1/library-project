@@ -1,3 +1,4 @@
+import sys
 import MySQLdb
 import pandas as pd
 import populate_books
@@ -22,19 +23,8 @@ list_of_views = [
     "combined_bookdata"
 ]
 
-# CREATE TRIGGER update_book_status_checkout
-#     AFTER INSERT ON checkout
-#     FOR EACH ROW
-#     BEGIN
-#         DECLARE new_status INT;
-
-#         SET new_status = NEW.Status;
-
-#         IF new_status = 0 THEN
-#             UPDATE book SET Status = 1 WHERE DecimalCode = NEW.DecimalCode;
-#         END IF;
-#     END
 triggers = {
+    # change book status to out of stock if checked out by someone
     "update_book_status_checkout": """
     CREATE TRIGGER update_book_status_checkout
     BEFORE INSERT ON checkout
@@ -55,7 +45,7 @@ triggers = {
         END IF;
     END
     """,
-
+    # update book status when book is returned in checkout
     "update_book_status_return": """
     CREATE TRIGGER update_book_status_return
     AFTER UPDATE ON checkout
@@ -66,53 +56,76 @@ triggers = {
         END IF;
     END;
     """,
-
+    # change all book copy status to reserved if
+    # someone is added to waitlist for the book
     "update_book_status_waitlist": """
     CREATE TRIGGER update_book_status_waitlist
     AFTER INSERT ON waitlist
     FOR EACH ROW
     BEGIN
-        DECLARE decimal_code_to_update VARCHAR(255);
-
-        SELECT book.DecimalCode INTO decimal_code_to_update
-        FROM book
-        WHERE book.BookID = NEW.BookID
-        AND book.Status = 1
-        ORDER BY book.DecimalCode
-        LIMIT 1;
-
-        IF decimal_code_to_update IS NOT NULL THEN
-            UPDATE book SET book.Status = 2 WHERE book.DecimalCode = decimal_code_to_update;
-        END IF;
+        UPDATE book SET book.Status = 2 WHERE book.BookID = NEW.BookID;
     END;
     """,
-
-    "update_book_availability": """
-    CREATE TRIGGER update_book_availability
-    AFTER UPDATE ON book
+    # when a book is returned (checkout.status = 2)
+    # move first person from waitlist to checkout
+    # set checkout status to on hold (3)
+    # put book on hold for 3 days
+    # delete person from waitlist
+    "move_to_hold_from_waitlist":
+    """
+    CREATE TRIGGER move_to_hold_from_waitlist
+    AFTER UPDATE ON checkout
     FOR EACH ROW
     BEGIN
-        IF NEW.Status = 0 THEN
+        IF NEW.Status = 2 THEN
             SET @patron_id := NULL;
-            SET @checkout_time := NULL;
+            SET @waitlist_id := NULL;
             SET @due_date := NULL;
 
-            SELECT Patron, TimeOut INTO @patron_id, @checkout_time
-            FROM checkout
-            WHERE DecimalCode = NEW.DecimalCode AND Status = 3
+            SELECT Patron, ListID INTO @patron_id, @waitlist_id
+            FROM waitlist
+            WHERE BookID = NEW.BookID
+            ORDER BY ListID
             LIMIT 1;
 
             IF @patron_id IS NOT NULL THEN
                 SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
 
-                INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
-                VALUES (@patron_id, NEW.DecimalCode, @checkout_time, @due_date, 3);
+                INSERT INTO checkout (Patron, BookID, DecimalCode, Due, Status)
+                VALUES (@patron_id, NEW.BookID, NEW.DecimalCode, @due_date, 3);
 
-                DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
+                DELETE FROM waitlist WHERE ListID = @waitlist_id;
             END IF;
         END IF;
     END
-    """
+
+        """
+    # """
+    # CREATE TRIGGER update_book_availability
+    # AFTER UPDATE ON book
+    # FOR EACH ROW
+    # BEGIN
+    #     IF NEW.Status = 0 THEN
+    #         SET @patron_id := NULL;
+    #         SET @checkout_time := NULL;
+    #         SET @due_date := NULL;
+
+    #         SELECT Patron, TimeOut INTO @patron_id, @checkout_time
+    #         FROM checkout
+    #         WHERE DecimalCode = NEW.DecimalCode AND Status = 3
+    #         LIMIT 1;
+
+    #         IF @patron_id IS NOT NULL THEN
+    #             SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
+
+    #             INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
+    #             VALUES (@patron_id, NEW.DecimalCode, @checkout_time, @due_date, 3);
+
+    #             DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
+    #         END IF;
+    #     END IF;
+    # END
+    # """
 }
 list_of_triggers = list(triggers.keys())
 #Creating tables
@@ -174,13 +187,30 @@ CREATE TABLE bookshelf (
     Slots INT,
 );"""
 ]
+
+views = [
+    """
+        CREATE VIEW combined_bookdata AS
+        SELECT
+            bd.BookID,
+            bd.Title,
+            bd.PublishDate,
+            bd.Publisher,
+            bd.Description,
+            b.DecimalCode,
+            b.Status
+        FROM
+            book b
+            INNER JOIN bookdata bd ON bd.BookID = b.BookID;
+        """
+]
 #TODO: make accID their username instead of an integer
 
 # queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 # queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
 
 
-def create_table(queries):
+def create_table():
 
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
@@ -199,27 +229,13 @@ def create_table(queries):
 
 def create_view():
 
-    query = """
-        CREATE VIEW combined_bookdata AS
-        SELECT
-            bd.BookID,
-            bd.Title,
-            bd.PublishDate,
-            bd.Publisher,
-            bd.Description,
-            b.DecimalCode,
-            b.Status
-        FROM
-            book b
-            INNER JOIN bookdata bd ON bd.BookID = b.BookID;
-        """
     with MySQLdb.connect("db") as conn:
 
         cursor = get_cursor(conn)
 
         try:
             print("Creating view")
-            cursor.execute(query)
+            cursor.execute(views)
             conn.commit()
             print("View created succesfully!")
         except Exception as e:
@@ -298,7 +314,7 @@ def get_book_ids():
 
 def initialize():
 
-    create_table(queries)
+    create_table()
     create_view()
     create_trigger()
 
@@ -354,10 +370,53 @@ def initialize():
 #     # for name, address, email in values:
 #     #     user, _ = email.split("@")
 #     #     User.objects.create_user(user, email, user)
+def refresh(which:str="TABLE"):
+    names = []
+    db_name="library"
+    match which:
+        case "TABLE":
+            names = list_of_tables
+        case "VIEW":
+            names = list_of_views
+        case "TRIGGER":
+            names = list_of_triggers
+
+    if not names:
+        return
+
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn, db_name)
+        for name in names:
+            print(f"Removing {name}")
+            query = f"DROP {which} {name};"
+            try:
+                cursor.execute(query)
+            except MySQLdb.Error as e:
+                print(f"Error: {e}")
+            else:
+                print("Data removed successfully!")
+
+def refresh_all():
+    for kind in ("TABLE", "VIEW", "TRIGGER"):
+        refresh(kind)
+
 
 # #Main
 if __name__ == "__main__":
     start_time = time.time()
-    initialize()
+    if len(sys.argv) == 1:
+        refresh_all()
+        initialize()
+
+    if "trigger" in sys.argv:
+        refresh("TRIGGER")
+        create_trigger()
+    if "table" in sys.argv:
+        refresh("TABLE")
+        create_table()
+    if "view" in sys.argv:
+        refresh("VIEW")
+        create_view()
+
     end_time = time.time()-start_time
     print(f"It took {end_time:.2f} seconds to initialize")
