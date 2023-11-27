@@ -9,6 +9,8 @@ from library_project.initialization.db_connect import get_cursor
 from django.contrib.auth.models import User
 from django.contrib.auth import logout
 from django.utils.safestring import mark_safe
+from django.contrib.auth.decorators import login_required
+
 import datetime
 
 def login(request):
@@ -30,20 +32,18 @@ class libraryForm(UserCreationForm):
         model = User
         fields = list(UserCreationForm.Meta.fields) + ['first_name', 'last_name', 'email']
 
-
+@login_required
 def profile_view(request):
 
     if request.user.is_authenticated:
         #Gets info using session username
         user = User.objects.get(username=request.user.username)
         #Setting flags
-        staff = False
+        staff = user.is_staff
         overdue = False
-        login = True
+        # login = True
         overdue_books = []
 
-        if user.is_staff == True:
-            staff = True
 
         user_attributes = [(field.verbose_name, getattr(user, field.name)) for field in User._meta.fields]
         user_dict = {key: value for key, value in user_attributes}
