@@ -16,31 +16,43 @@ list_of_tables = [
     "book",
     "checkout",
     "waitlist",
-    "distance",
-    "elevator",
 ]
 list_of_views = [
     "combined_bookdata"
 ]
 
+# CREATE TRIGGER update_book_status_checkout
+#     AFTER INSERT ON checkout
+#     FOR EACH ROW
+#     BEGIN
+#         DECLARE new_status INT;
 
-triggers = triggers = {
+#         SET new_status = NEW.Status;
+
+#         IF new_status = 0 THEN
+#             UPDATE book SET Status = 1 WHERE DecimalCode = NEW.DecimalCode;
+#         END IF;
+#     END
+triggers = {
     "update_book_status_checkout": """
+    CREATE TRIGGER update_book_status_checkout
+    BEFORE INSERT ON checkout
+    FOR EACH ROW
+    BEGIN
+        DECLARE new_status INT;
+        DECLARE decimal_code_to_update VARCHAR(25);
 
-CREATE TRIGGER update_book_status_checkout
-AFTER INSERT ON checkout
-FOR EACH ROW
-BEGIN
-    DECLARE new_status INT;
+        SET new_status = NEW.Status;
 
-    SET new_status = NEW.Status;
+        SET decimal_code_to_update = (
+            SELECT MIN(b.DecimalCode) FROM book b WHERE b.BookID = NEW.BookID AND b.Status = 0
+        );
 
-    IF new_status = 0 THEN
-        UPDATE book SET Status = 1 WHERE DecimalCode = NEW.DecimalCode;
-    ELSEIF new_status = 2 THEN
-        UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
-    END IF;
-END
+        IF new_status = 0 THEN
+            SET NEW.DecimalCode = decimal_code_to_update;
+            UPDATE book SET Status = 1 WHERE DecimalCode = decimal_code_to_update;
+        END IF;
+    END
     """,
 
     "update_book_status_return": """
@@ -55,64 +67,63 @@ END
     """,
 
     "update_book_status_waitlist": """
-CREATE TRIGGER update_book_status_waitlist
-AFTER INSERT ON waitlist
-FOR EACH ROW
-BEGIN
-    DECLARE decimal_code_to_update VARCHAR(255);
+    CREATE TRIGGER update_book_status_waitlist
+    AFTER INSERT ON waitlist
+    FOR EACH ROW
+    BEGIN
+        DECLARE decimal_code_to_update VARCHAR(255);
 
-    SELECT book.DecimalCode INTO decimal_code_to_update
-    FROM book
-    WHERE book.BookID = NEW.BookID
-      AND book.Status = 1
-    ORDER BY book.DecimalCode
-    LIMIT 1;
+        SELECT book.DecimalCode INTO decimal_code_to_update
+        FROM book
+        WHERE book.BookID = NEW.BookID
+        AND book.Status = 1
+        ORDER BY book.DecimalCode
+        LIMIT 1;
 
-    IF decimal_code_to_update IS NOT NULL THEN
-        UPDATE book SET book.Status = 2 WHERE book.DecimalCode = decimal_code_to_update;
-    END IF;
-END;
+        IF decimal_code_to_update IS NOT NULL THEN
+            UPDATE book SET book.Status = 2 WHERE book.DecimalCode = decimal_code_to_update;
+        END IF;
+    END;
     """,
 
     "update_book_availability": """
-CREATE TRIGGER update_book_availability
-AFTER UPDATE ON book
-FOR EACH ROW
-BEGIN
-    IF NEW.Status = 0 THEN
-        SET @patron_id := NULL;
-        SET @checkout_time := NULL;
-        SET @due_date := NULL;
+    CREATE TRIGGER update_book_availability
+    AFTER UPDATE ON book
+    FOR EACH ROW
+    BEGIN
+        IF NEW.Status = 0 THEN
+            SET @patron_id := NULL;
+            SET @checkout_time := NULL;
+            SET @due_date := NULL;
 
-        SELECT Patron, TimeOut INTO @patron_id, @checkout_time
-        FROM checkout
-        WHERE DecimalCode = NEW.DecimalCode AND Status = 3
-        LIMIT 1;
+            SELECT Patron, TimeOut INTO @patron_id, @checkout_time
+            FROM checkout
+            WHERE DecimalCode = NEW.DecimalCode AND Status = 3
+            LIMIT 1;
 
-        IF @patron_id IS NOT NULL THEN
-            SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
+            IF @patron_id IS NOT NULL THEN
+                SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
 
-            INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
-            VALUES (@patron_id, NEW.DecimalCode, @checkout_time, @due_date, 3);
+                INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
+                VALUES (@patron_id, NEW.DecimalCode, @checkout_time, @due_date, 3);
 
-            DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
+                DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
+            END IF;
         END IF;
-    END IF;
-END
+    END
     """
 }
 list_of_triggers = list(triggers.keys())
 #Creating tables
-queries = []
-#TODO: make accID their username instead of an integer
-queries.append("""
+queries = [
+"""
 CREATE TABLE patron (
     AccID INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50) NOT NULL,
     Address VARCHAR(100) NOT NULL,
     Email VARCHAR(40) NOT NULL
-);""")
-queries.append("""
+);""",
+"""
 CREATE TABLE bookdata (
 	BookID INT PRIMARY KEY AUTO_INCREMENT,
 	Title VARCHAR(255) NOT NULL,
@@ -120,49 +131,52 @@ CREATE TABLE bookdata (
 	Publisher VARCHAR(50),
 	Description TEXT,
     FULLTEXT idx (Title, Description)
-) Engine = InnoDB;""")
-queries.append("""
+) Engine = InnoDB;""",
+"""
 CREATE TABLE author (
     BookID INT REFERENCES bookdata(BookID),
     Name VARCHAR(200) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, Name)
-);""")
-queries.append("""
+);""",
+"""
 CREATE TABLE category (
     BookID INT REFERENCES bookdata(BookID),
     CategoryName VARCHAR(500) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, CategoryName)
-);""")
-queries.append("""
+);""",
+"""
 CREATE TABLE book (
     DecimalCode VARCHAR(25) PRIMARY KEY,
     BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
-);""")
-#Had to up Name length because of books written by long names by US agencies
-
-queries.append(
-"""CREATE TABLE checkout (
+);""",
+"""
+CREATE TABLE checkout (
     Patron VARCHAR(150) REFERENCES auth_user(username),
     DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
+    BookID VARCHAR(25) REFERENCES bookdata(BookID),
     TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
     Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),
     Status TINYINT NOT NULL,
     PRIMARY KEY (DecimalCode, TimeOut)
-);""")
-queries.append("""CREATE TABLE waitlist (
+);""",
+"""
+CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
     Patron VARCHAR(150) REFERENCES auth_user(username),
     BookID INT REFERENCES bookdata(BookID)
-);""")
-queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
-queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
-
-queries.append("""CREATE TABLE bookshelf (
+);""",
+"""
+CREATE TABLE bookshelf (
     BookshelfID INT PRIMARY KEY,
     Category VARCHAR(200),
     Slots INT,
-);""")
+);"""
+]
+#TODO: make accID their username instead of an integer
+
+# queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
+# queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
 
 
 def create_table(queries):

@@ -141,7 +141,6 @@ def get_book_details(bookid:int):
         COUNT(*) AS 'Number of Copies',
         cb.DecimalCode AS 'Book Codes',
         cb.Status AS 'Status',
-        MIN(cb.Status) AS 'Best Status',
         MIN(cb.BookID) AS 'ID'
     FROM
         combined_bookdata cb
@@ -158,17 +157,29 @@ def get_book_details(bookid:int):
 
         # Fetch the results
         results = cursor.fetchall()
-    print(results)
-    return keys_values_to_dict(
-        [
-            "title",  "authors", "category", "publisher","publishdate","description", "copies", "codes", "status", "best_status", "book_id"
-        ],
-        [tuple(r) for r in zip(*results)]
-    )
+
+
+    names = [
+        "title",  "authors", "category", "publisher",
+        "publishdate","description", "copies", "codes",
+        "status", "book_id"
+    ]
+    try:
+        return keys_values_to_dict(
+            names,
+            [tuple(r) for r in zip(*results)]
+        )
+    except ValueError as e:
+        print(e)
+        return keys_values_to_dict(
+            names,
+            ["Unknown"]*len(names)
+        )
 
 def detailed_results(request, bookid):
     results = get_book_details(bookid)
     results["books"] = list(zip(results["codes"], results["status"]))
+    results["best_status"] = min(results["status"])
     return render(request, "search/details.html", {"results":results})
 
 def get_copy_details(book_id:str):
@@ -194,19 +205,13 @@ def get_copy_details(book_id:str):
 
 def user_checkout(user, book_id):
     query = """
-    INSERT INTO checkout (Patron, DecimalCode, Status)
-    VALUES (
-        %s,
-        (
-            SELECT MIN(b.DecimalCode) FROM book b WHERE b.BookID = %s AND b.Status = 0
-        ),
-        %s
-    );
+    INSERT INTO checkout (Patron, BookID, Status)
+    VALUES (%s, %s, %s);
     """
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(query, (user, book_id,1))
+            cursor.execute(query, (user, book_id, 0))
             conn.commit()
 
         except MySQLdb.Error as e:
@@ -320,10 +325,6 @@ def remove_row(request):
     return HttpResponse("Invalid request method")
 
 
-
-
-
-
 def add_row(request):
     if request.method == "POST":
         form = addForm(request.POST)
@@ -354,10 +355,6 @@ def add_row(request):
                 #Author Query
                 cursor.execute(query_author,(bookID,author))
                 cursor.execute(query_category,(bookID,category))
-                #
-
-
-                # cursor.execute
 
                 conn.commit()
                 message = mark_safe(f'Insert Successful!<br>{bookID}')
