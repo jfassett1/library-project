@@ -304,7 +304,7 @@ def get_book_ids():
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         query = """
-        SELECT bd.BookID, bd.Title FROM bookdata bd ORDER BY bd.BookID;
+        SELECT bd.BookID, bd.Title, bd.Description FROM bookdata bd ORDER BY bd.BookID;
         """
         try:
             cursor.execute(query)
@@ -313,7 +313,8 @@ def get_book_ids():
 
     return pd.DataFrame(cursor.fetchall(), columns=[
             "BookID",
-            "Title"
+            "Title",
+            "Description"
             ]).set_index("Title")
 
 def train_knn(books:pd.DataFrame):
