@@ -94,7 +94,8 @@ def construct_query(
 
 def homepage(request):
     form = SearchForm()
-    info = False
+    info = ""
+    # return render(request,"home.html",{"form":form,"info":info})
     if request.user.is_authenticated:
         #SQL stuff
         conn = MySQLdb.connect('db')
@@ -129,7 +130,8 @@ def homepage(request):
             recommendation_dict.append(titlemap[i])
             print(titlemap[i])
 
-    return render(request,"home.html",{"form":form,"info":info})
+        return render(request,"home.html",{"form":form,"info":recommendation_dict})
+    return render(request,"home.html",{"form":form,"info":""})
     # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
 def search(request):
