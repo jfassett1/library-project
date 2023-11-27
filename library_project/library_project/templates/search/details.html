@@ -8,6 +8,7 @@
 <script src="{%static 'js/checkOut.js' %}"></script>
 {% endblock%}
 {% block body %}
+
 {% comment %} {% include 'search/searchbar.html' %} {% endcomment %}
 <div class="container">
     <div><strong>Title: </strong>{{results.title.0}}</div>
@@ -48,6 +49,9 @@
                 </tr>
             {% endfor %}
         </tbody>
-
+        </table>
 </div>
+
+{%include 'search/recommendation.html'%}
+
 {% endblock %}
