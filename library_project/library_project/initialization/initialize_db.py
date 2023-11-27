@@ -26,16 +26,21 @@ list_of_views = [
 
 triggers = triggers = {
     "update_book_status_checkout": """
-    CREATE TRIGGER update_book_status_checkout
-    AFTER INSERT ON checkout
-    FOR EACH ROW
-    BEGIN
-        IF NEW.Status = 0 THEN
-            UPDATE book SET Status = 1 WHERE DecimalCode = NEW.DecimalCode;
-        ELSIF NEW.Status = 2 THEN
-            UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
-        END IF;
-    END;
+
+CREATE TRIGGER update_book_status_checkout
+AFTER INSERT ON checkout
+FOR EACH ROW
+BEGIN
+    DECLARE new_status INT;
+
+    SET new_status = NEW.Status;
+
+    IF new_status = 0 THEN
+        UPDATE book SET Status = 1 WHERE DecimalCode = NEW.DecimalCode;
+    ELSEIF new_status = 2 THEN
+        UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
+    END IF;
+END
     """,
 
     "update_book_status_return": """
@@ -50,46 +55,50 @@ triggers = triggers = {
     """,
 
     "update_book_status_waitlist": """
-    CREATE TRIGGER update_book_status_waitlist
-    AFTER INSERT ON waitlist
-    FOR EACH ROW
-    BEGIN
-        UPDATE book SET book.Status = 2 WHERE DecimalCode IN (
-            SELECT book.DecimalCode FROM book
-            WHERE book.BookID = NEW.BookID
-            AND book.Status = 1
-            ORDER BY book.DecimalCode
-            LIMIT 1
-        );
-    END;
+CREATE TRIGGER update_book_status_waitlist
+AFTER INSERT ON waitlist
+FOR EACH ROW
+BEGIN
+    DECLARE decimal_code_to_update VARCHAR(255);
+
+    SELECT book.DecimalCode INTO decimal_code_to_update
+    FROM book
+    WHERE book.BookID = NEW.BookID
+      AND book.Status = 1
+    ORDER BY book.DecimalCode
+    LIMIT 1;
+
+    IF decimal_code_to_update IS NOT NULL THEN
+        UPDATE book SET book.Status = 2 WHERE book.DecimalCode = decimal_code_to_update;
+    END IF;
+END;
     """,
 
     "update_book_availability": """
-    CREATE TRIGGER update_book_availability
-    AFTER UPDATE ON book
-    FOR EACH ROW
-    BEGIN
-        IF NEW.Status = 0 THEN
-            DECLARE patron_id INT;
-            DECLARE checkout_time DATETIME;
-            DECLARE due_date DATE;
+CREATE TRIGGER update_book_availability
+AFTER UPDATE ON book
+FOR EACH ROW
+BEGIN
+    IF NEW.Status = 0 THEN
+        SET @patron_id := NULL;
+        SET @checkout_time := NULL;
+        SET @due_date := NULL;
 
-            SELECT Patron, TimeOut INTO patron_id, checkout_time
-            FROM checkout
-            WHERE DecimalCode = NEW.DecimalCode AND Status = 3
-            LIMIT 1;
+        SELECT Patron, TimeOut INTO @patron_id, @checkout_time
+        FROM checkout
+        WHERE DecimalCode = NEW.DecimalCode AND Status = 3
+        LIMIT 1;
 
-            IF patron_id IS NOT NULL THEN
-                SET due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
+        IF @patron_id IS NOT NULL THEN
+            SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
 
-                INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
-                VALUES (patron_id, NEW.DecimalCode, checkout_time, due_date, 3);
+            INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
+            VALUES (@patron_id, NEW.DecimalCode, @checkout_time, @due_date, 3);
 
-                -- Remove user from waitlist
-                DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
-            END IF;
+            DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
         END IF;
-    END;
+    END IF;
+END
     """
 }
 list_of_triggers = list(triggers.keys())
@@ -143,7 +152,7 @@ queries.append(
 );""")
 queries.append("""CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
-    Patron INT REFERENCES patron(AccID),
+    Patron VARCHAR(150) REFERENCES auth_user(username),
     BookID INT REFERENCES bookdata(BookID)
 );""")
 queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
@@ -161,10 +170,6 @@ def create_table(queries):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
 
-        try:
-            cursor.execute("DELIMITER //")
-        except MySQLdb.Error as e:
-            print(e)
         for table,tablename in zip(queries,list_of_tables):
             print(f"Creating table {tablename}")
             try:
@@ -201,6 +206,7 @@ def create_view():
             print("Creating view")
             cursor.execute(query)
             conn.commit()
+            print("View created succesfully!")
         except Exception as e:
             print("Error:", e)
             conn.rollback()

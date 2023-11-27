@@ -9,7 +9,8 @@
     <div class="container">
         <pre> {{SQLquery.0}} </pre>
     {% if results %}
-
+    <button class="prevButton" type="button" onclick="previousPage()">Previous</button>
+    <button class="nextButton" type="button" onclick="nextPage()">Next</button>
     <p> Showing results <strong id="resultsNumbers">{{ num_res.0 }}-{{ num_res.1}}</strong></p>
 
         <table>
@@ -44,12 +45,14 @@
     {% else %}
         <p id="noResults">No results found.</p>
     {% endif %}
-    <button id="previousButton" type="button" onclick="previousPage()">Previous</button>
-    <button id="nextButton" type="button" onclick="nextPage()">Next</button>
+    <button class="prevButton" type="button" onclick="previousPage()">Previous</button>
+    <button class="nextButton" type="button" onclick="nextPage()">Next</button>
     <script>
         const queryString = window.location.search
         const urlParams = new URLSearchParams(queryString);
         const pageNum = parseInt(urlParams.get("page"));
+        const pageField = document.getElementById('id_page');
+
         function previousPage() {
             pageField.value = Math.max(pageNum - 1, 1);
             document.getElementById('searchForm').submit();
@@ -59,23 +62,22 @@
             pageField.value = pageNum + 1;
             document.getElementById('searchForm').submit();
         }
-        const pageField = document.getElementById('id_page');
-        if (pageNum === 1) {
-            document.getElementById('previousButton').disabled = true;
-        } else {
-            document.getElementById('previousButton').disabled = false;
-        }
 
-        if (document.getElementById("noResults") != null) {
-            document.getElementById('nextButton').disabled = true;
+        let nextDisabled = false;
+        if (document.getElementById('noResults') != null) {
+            nextDisabled = true;
         } else {
             const [lower, upper] = document.getElementById('resultsNumbers').innerText.split("-");
-            if (parseInt(upper)-parseInt(lower) < 50) {
-                document.getElementById('nextButton').disabled = true;
-            } else {
-                document.getElementById('nextButton').disabled = false;
-            }
+            nextDisabled = parseInt(upper)-parseInt(lower) < 50
         }
+        for (button of document.getElementsByClassName("nextButton")) {
+            button.disabled = nextDisabled;
+        }
+
+        for (button of document.getElementsByClassName("prevButton")) {
+            button.disabled = pageNum === 1;
+        }
+
 
 
 

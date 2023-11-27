@@ -19,6 +19,13 @@
 </div>
 <div class="container">
     <h3>Entries</h3>
+    <button onclick="checkoutBook({{results.book_id.0}})">
+    {% if results.best_status.0 == 0 %}
+    Check Out
+    {% else %}
+    Join Waitlist
+    {% endif %}
+    </button>
     <table>
         <thead>
             <tr>
@@ -32,13 +39,12 @@
                 <tr>
                     <td>{{code}}</td>
                     {% if status == 0 %}
-                        <td>In Stock
+                        <td>In Stock</td>
                     {% elif status == 1 %}
-                        <td>Out of Stock
+                        <td>Out of Stock</td>
                     {% else%}
-                        <td>Reserved
+                        <td>Reserved</td>
                     {% endif%}
-                    <button onclick="checkoutBook('{{code}}')">Check Out</button></td>
                 </tr>
             {% endfor %}
         </tbody>

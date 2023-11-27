@@ -23,13 +23,13 @@ with MySQLdb.connect("db") as conn:
             print(f"Error: {e}")
         else:
             print("View removed successfully!")
-    for trigger in list_of_triggers:
-        print(f"Removing {trigger}")
-        query = f"DROP TRIGGER {trigger};"
-        try:
-            cursor.execute(query)
-        except MySQLdb.Error as e:
-            print(f"Error: {e}")
-        else:
-            print("Trigger removed successfully!")
+    # for trigger in list_of_triggers:
+    #     print(f"Removing {trigger}")
+    #     query = f"DROP TRIGGER {trigger};"
+    #     try:
+    #         cursor.execute(query)
+    #     except MySQLdb.Error as e:
+    #         print(f"Error: {e}")
+    #     else:
+    #         print("Trigger removed successfully!")
     conn.commit()
