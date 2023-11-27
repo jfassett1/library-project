@@ -5,3 +5,5 @@ sqlparse
 mysqlclient
 pandas
 faker
+scikit-learn
+gensim
