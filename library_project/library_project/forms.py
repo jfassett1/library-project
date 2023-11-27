@@ -25,12 +25,13 @@ class SearchForm(forms.Form):
 
 class addForm(forms.Form):
     title = forms.CharField(label="Title", max_length=100, required=True)
-    author = forms.CharField(label="Author", max_length=60, required=True)
-    category = forms.CharField(label="Category",max_length=200,required=True)
-    year = forms.IntegerField(label="Year of Publication",min_value=0,max_value=2100)
-    publisher = forms.CharField(label="Publisher",max_length = 200,required=True)
-    desc = forms.CharField(label="Description",max_length = 300,required=True)
-    
+    author = forms.CharField(label="Author", max_length=60)
+    category = forms.CharField(label="Category",max_length=200)
+    year = forms.IntegerField(label="Year of Publication",min_value=-9999,max_value=2100)
+    publisher = forms.CharField(label="Publisher",max_length = 200)
+    desc = forms.CharField(label="Description",widget=forms.Textarea())
+
+
 class rmForm(forms.Form):
     searchoptions = ((0,"BookID"),(1,"Decimal"))
     SEARCHBY = forms.ChoiceField(widget=forms.RadioSelect,choices=searchoptions,initial='BookID',required=True)
