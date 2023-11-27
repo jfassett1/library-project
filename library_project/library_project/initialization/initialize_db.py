@@ -304,7 +304,7 @@ def get_book_ids():
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         query = """
-        SELECT bd.BookID, bd.Title, bd.Description FROM bookdata bd ORDER BY bd.BookID;
+        SELECT bd.BookID, bd.Title FROM bookdata bd ORDER BY bd.BookID;
         """
         try:
             cursor.execute(query)
@@ -314,7 +314,6 @@ def get_book_ids():
     return pd.DataFrame(cursor.fetchall(), columns=[
             "BookID",
             "Title",
-            "Description"
             ]).set_index("Title")
 
 def train_knn(books:pd.DataFrame):
@@ -335,14 +334,14 @@ def train_knn(books:pd.DataFrame):
 
     print("creating description vectors")
 
-    book_vecs = []
-    for book in books["description"]:
-        book_vecs.append(descriptions_to_vec.infer_vector(preprocess_documents([book])[0]))
-    book_vecs = np.array(book_vecs)
-    print("training description knn")
-    neigh = NearestNeighbors(n_neighbors=5, metric='cosine')
-    neigh.fit(book_vecs)
-    joblib.dump(neigh, "../recommendation/desc_neighbors.pkl")
+    # book_vecs = []
+    # for book in books["description"]:
+    #     book_vecs.append(descriptions_to_vec.infer_vector(preprocess_documents([book])[0]))
+    # book_vecs = np.array(book_vecs)
+    # print("training description knn")
+    # neigh = NearestNeighbors(n_neighbors=5, metric='cosine')
+    # neigh.fit(book_vecs)
+    # joblib.dump(neigh, "../recommendation/desc_neighbors.pkl")
 
 def gen_insert_data():
     books_data = populate_books.read_books_data(50_000)
@@ -371,7 +370,6 @@ def gen_insert_data():
         updated_ids, data, False, "Title"
     ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
     books = books[books["BookID"]!=1]
-    train_knn(updated_ids)
 
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
@@ -392,6 +390,9 @@ def gen_insert_data():
         zip([fake.name() for _ in range(n_patrons)],
             [fake.address() for _ in range(n_patrons)],
             [fake.unique.email() for _ in range(n_patrons)]))
+
+    train_knn(updated_ids)
+
     insert("patron","Name, Address, Email",values)
 
 
