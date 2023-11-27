@@ -114,6 +114,7 @@ def homepage(request):
         cursor.execute(query)
         try:
             info = cursor.fetchall()[0][0]
+            cursor.close()
         except:
             info = ""
             return render(request,"home.html",{"form":form,"info":info})
@@ -124,13 +125,23 @@ def homepage(request):
 
         sample = model.infer_vector(preprocess_documents([info])[0])
         print(sample)
-        dist, idxs = neigh.kneighbors([sample],5)
+        dist, idxs = neigh.kneighbors([sample],6)
         recommendation_dict = []
         for i in idxs[0]:
-            recommendation_dict.append(titlemap[i])
-            print(titlemap[i])
+            cursor = get_cursor(conn)
+            # recommendation_dict.append(titlemap[i])
 
-        return render(request,"home.html",{"form":form,"info":recommendation_dict})
+            id_query = """SELECT Title,BookID
+            FROM bookdata
+            WHERE Title = %s;"""
+            cursor.execute(id_query,{titlemap[i]})
+            tuples = cursor.fetchall()
+            cursor.close()
+            recommendation_dict.append(tuples)
+        
+        return render(request,"home.html",{"form":form,
+                                           "info":recommendation_dict[1:],
+                                           "lastbook":recommendation_dict[0]})
     return render(request,"home.html",{"form":form,"info":""})
     # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
