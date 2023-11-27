@@ -83,7 +83,7 @@ def construct_query(
 def homepage(request):
     form = SearchForm()
     login = False
-    
+
     firstname = ""
     if request.user.is_authenticated:
         user = User.objects.get(username=request.user.username)
@@ -256,8 +256,6 @@ def checkout_book(request):
 
     # If the request method is not POST, return an error response
     return JsonResponse({'error': 'Invalid request method'})
-
-
 
 
 def landing(request):
