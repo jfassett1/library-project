@@ -27,6 +27,7 @@ function handleCheckoutResponse(response) {
     if (response.success) {
         // Book successfully checked out
         alert('Book checked out successfully!');
+        location.reload();
     } else if (response.waitlisted) {
         // User added to the waitlist
         alert('You have been added to the waitlist for this book.');

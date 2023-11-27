@@ -14,7 +14,9 @@
         }
     </style>
     {% block head %}
-    <div class="header" style="background-color: lightblue; padding: 1%;">
+    {% endblock %}
+
+    <div class="header" style="background-color: lightblue; text-align: center; border-radius: 20%; margin: auto; width:40%; ">
         <!-- Checks if user is logged in -->
         {% if login %}
         <h2>Welcome {{ Name }}!</h2>
@@ -40,7 +42,6 @@
         </ul>
         {% endif %}
     </div>
-    {% endblock %}
 </head>
 <body>
     {% block body %}

@@ -15,7 +15,7 @@
 <div class = "container">
     <h2 style="background-color: lightblue; text-align: center; border-radius: 10%; margin: auto;">Account Page for {{username}}</h2>
     {{user_Data}}
-    <h3>Personal Data</h3>
+    <h3><u>Personal Data</u></h3>
     <table class = 'datatable'>
     {% for name, value in identity.items %}
         <p><b>{{ name|title }}</b>: {{ value }}</p>
@@ -23,7 +23,7 @@
     </table><br>
     <hr>
 
-    <h3>Account information</h3>
+    <h3><u>Account information</u></h3>
     <table>
         {% for name, value in system.items %}
             <p><b>{{ name|title }}</b>: {{ value }}</p>
@@ -31,7 +31,7 @@
     </table><br>
 
     <hr>
-    <h3>User Status</h3>
+    <h3><u>User Status</u></h3>
     <table>
         {% for name, value in status.items %}
             <p><b>{{ name|title }}</b>: {{ value }}</p>
@@ -40,7 +40,7 @@
 
     <hr>
 
-    <h3>Book Checkouts:</h3>
+    <h3><u>Book Checkouts:</u></h3>
     <!-- If there are overdue books -->
     {% if overdue %}
     <b style = color:red>You have overdue books!</b>
@@ -49,7 +49,7 @@
     {%endfor%}
     <br>
     {%endif%}
-    <table style="background-color: lightblue; text-align: center; border-radius: 10%; margin: auto;">
+    <table style="background-color: lightblue; text-align: center; border-radius: 10%; margin: auto;width:75%">
         {% if checkoutdata %}
             <tr>
                 <th></th>
