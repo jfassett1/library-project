@@ -11,6 +11,7 @@ from utils.general import keys_values_to_dict
 
 from .forms import SearchForm, addForm, rmForm
 from .initialization.db_connect import get_cursor
+from django.contrib.auth.models import User
 
 logger = logging.getLogger('django')
 # BOOK_STATUS = { "":2,"In stock":0,
@@ -81,7 +82,14 @@ def construct_query(
 
 def homepage(request):
     form = SearchForm()
-    return render(request, "home.html", {"form":form})
+    login = False
+    
+    firstname = ""
+    if request.user.is_authenticated:
+        user = User.objects.get(username=request.user.username)
+        login = True
+        firstname = user.first_name
+    return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
 def search(request):
     if request.method == "GET":

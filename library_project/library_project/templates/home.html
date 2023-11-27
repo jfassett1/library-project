@@ -3,8 +3,19 @@
 {% block title %}eLib - Home{% endblock %}
 
 {% block body %}
+
+
+{%if login%}
+<h2>Welcome {{Name}}!</h2>
+<a href = 'accounts/exit/'>Logout</a>
+{%else%}
+<h2>You are not logged in</h2>
+<a href = 'accounts/login/'>Login</a>
+{%endif%}
+
 {% include 'search/searchbar.html' %}
-<div>
-<a href = "update/">CRUD Page</a>
+<div class = "container">
+{%include 'registration/login.html'%}
 </div>
+<a href = "update/">CRUD Page</a>
 {% endblock %}

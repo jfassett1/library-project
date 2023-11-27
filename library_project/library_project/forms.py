@@ -1,4 +1,7 @@
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+
 
 class SearchForm(forms.Form):
     OPTIONS = ((0,"In stock"), (1,"Out of stock",), (2,"Reserved"))
@@ -33,6 +36,7 @@ class rmForm(forms.Form):
     SEARCHBY = forms.ChoiceField(widget=forms.RadioSelect,choices=searchoptions,initial='BookID',required=True)
     decimal = forms.CharField(label="Decimal Code",max_length=12,required=False)
     bookid = forms.CharField(label="BookID",max_length=12,required=False)
+
 
     # title = forms.CharField(label="Title", max_length=100, required=True)
     # author = forms.CharField(label="Author", max_length=60, required=True)

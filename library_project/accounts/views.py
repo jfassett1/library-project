@@ -2,9 +2,11 @@ from django.shortcuts import render
 from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse_lazy
 from django.views import generic
+from django.shortcuts import redirect
 
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.contrib.auth import logout
 
 
 
@@ -12,7 +14,9 @@ def login(request):
     return render(request,"registration/login.html")
 
 
-
+def logout_user(request):
+    logout(request)
+    return redirect('home')
 class libraryForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
