@@ -1,0 +1,14 @@
+
+
+<div class = container>
+<h3>Did you like {{lastbook.0.0}}?</h3> <Br>
+    <!-- <p style="color:green"></p>
+<h3>?</h3> -->
+<h3>You may like these as well!</h3><br>
+
+
+
+{% for val in info %}
+<li><a href="{% url 'book-details' val.0.1 %}">{{ val.0.0 }}</a></li><br>
+{% endfor %}
+</div>

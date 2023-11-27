@@ -114,7 +114,9 @@ def homepage(request):
         cursor.execute(query)
         try:
             info = cursor.fetchall()[0][0]
-        except MySQLdb.Error:
+            cursor.close()
+        except:
+            info = ""
             return render(request,"home.html",{"form":form,"info":info})
         #Recommendation code
         model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
@@ -122,15 +124,24 @@ def homepage(request):
         titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
 
         sample = model.infer_vector(preprocess_documents([info])[0])
-        # print(sample)
-        dist, idxs = neigh.kneighbors([sample],5)
+        print(sample)
+        dist, idxs = neigh.kneighbors([sample],6)
         recommendation_dict = []
-        print(titlemap[idxs[0][0]])
-        for i in idxs[0][1:]:
-            recommendation_dict.append(titlemap[i])
-            # print(titlemap[i])
+        for i in idxs[0]:
+            cursor = get_cursor(conn)
+            # recommendation_dict.append(titlemap[i])
 
-        return render(request,"home.html",{"form":form,"info":recommendation_dict})
+            id_query = """SELECT Title,BookID
+            FROM bookdata
+            WHERE Title = %s;"""
+            cursor.execute(id_query,{titlemap[i]})
+            tuples = cursor.fetchall()
+            cursor.close()
+            recommendation_dict.append(tuples)
+        
+        return render(request,"home.html",{"form":form,
+                                           "info":recommendation_dict[1:],
+                                           "lastbook":recommendation_dict[0]})
     return render(request,"home.html",{"form":form,"info":""})
     # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 

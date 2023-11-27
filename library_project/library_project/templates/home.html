@@ -2,9 +2,10 @@
 
 {% block title %}eLib - Home{% endblock %}
 {% block body %}
-{% for recc in info %}
-<p>{{recc}}</p>
-{% endfor %}
 
 {% include 'search/searchbar.html' %}
+
+{% if info %}
+{% include 'search/recommendation.html' %}
+{% endif %}
 {% endblock %}
