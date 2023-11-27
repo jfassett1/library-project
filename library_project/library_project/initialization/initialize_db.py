@@ -391,9 +391,10 @@ def gen_insert_data():
             [fake.address() for _ in range(n_patrons)],
             [fake.unique.email() for _ in range(n_patrons)]))
 
-    # train_knn(updated_ids)
+
 
     insert("patron","Name, Address, Email",values)
+    train_knn(updated_ids)
 
 
 

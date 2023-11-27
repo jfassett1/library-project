@@ -66,12 +66,13 @@ def profile_view(request):
             cursor = get_cursor(conn)
             try:
                 query = f"""SELECT bd.title, c.DecimalCode,c.Due
-                FROM checkout as c 
+                FROM checkout as c
                 INNER JOIN book as b
                 ON c.DecimalCode = b.DecimalCode
                 INNER JOIN bookdata as bd
                 ON b.BookID = bd.BookID
-                WHERE Patron = '{username}'"""
+                WHERE Patron = '{username}'
+                ORDER BY c.TimeOut"""
                 cursor.execute(query)
                 data = cursor.fetchall()
                 data = list(data)

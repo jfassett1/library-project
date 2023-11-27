@@ -109,7 +109,7 @@ def homepage(request):
         INNER JOIN bookdata as b
         ON c.BookID = b.BookID
         WHERE c.Patron ='{username}'
-        ORDER BY c.TimeOut
+        ORDER BY c.TimeOut DESC
         LIMIT 1;"""
         cursor.execute(query)
         try:
