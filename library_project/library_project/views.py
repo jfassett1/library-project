@@ -134,7 +134,7 @@ def get_book_details(bookid:int):
     SELECT
         cb.Title AS 'Book Title',
         GROUP_CONCAT(a.Name) AS 'Authors',
-        GROUP_CONCAT(c.CategoryName) AS 'Categories',
+        GROUP_CONCAT(DISTINCT c.CategoryName) AS 'Categories',
         cb.Publisher AS 'Publisher Name',
         cb.PublishDate AS 'Publish Date',
         cb.Description AS 'Description',
