@@ -96,53 +96,95 @@ def homepage(request):
     form = SearchForm()
     info = ""
     # return render(request,"home.html",{"form":form,"info":info})
-    if request.user.is_authenticated:
+    if not request.user.is_authenticated:
+        return render(request,"home.html",{"form":form,"info":""})
         #SQL stuff
-        conn = MySQLdb.connect('db')
+    with MySQLdb.connect('db') as conn:
         cursor = get_cursor(conn)
         user = User.objects.get(username=request.user.username)
 
         username = user.username
 
-        query = f"""SELECT b.Title
-        FROM checkout as c
-        INNER JOIN bookdata as b
-        ON c.BookID = b.BookID
-        WHERE c.Patron ='{username}'
-        ORDER BY c.TimeOut DESC
-        LIMIT 1;"""
-        cursor.execute(query)
+        query = f"""
+        SELECT DISTINCT bc.Title, bc.TimeOut
+        FROM (
+            SELECT b.Title, c.TimeOut
+            FROM checkout as c
+            INNER JOIN bookdata as b ON c.BookID = b.BookID
+            WHERE c.Patron = '{username}'
+            ORDER BY c.TimeOut DESC
+        ) AS bc
+        ORDER BY bc.TimeOut DESC
+        LIMIT 5;"""
+
         try:
-            info = cursor.fetchall()[0][0]
+            cursor.execute(query)
+            info = [c[0] for c in cursor.fetchall()]
             cursor.close()
         except:
-            info = ""
             return render(request,"home.html",{"form":form,"info":info})
         #Recommendation code
         model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
         neigh = joblib.load(r"./library_project/recommendation/neighbors.pkl")
         titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
 
-        sample = model.infer_vector(preprocess_documents([info])[0])
-        print(sample)
-        dist, idxs = neigh.kneighbors([sample],6)
-        recommendation_dict = []
-        for i in idxs[0]:
-            cursor = get_cursor(conn)
-            # recommendation_dict.append(titlemap[i])
+        # process titles into list of strings
+        titles = preprocess_documents(info)
+        print(info)
+        # get neighbors
+        predictions = []
+        for j, title in enumerate(titles):
+            sample = model.infer_vector(title)
+            dist, idxs = neigh.kneighbors([sample],6)
+            print(dist)
+            dist /= 1+(1/(j+2)**j)
+            print(dist, idxs, info[j])
 
-            id_query = """SELECT Title,BookID
-            FROM bookdata
-            WHERE Title = %s;"""
-            cursor.execute(id_query,{titlemap[i]})
-            tuples = cursor.fetchall()
-            cursor.close()
-            recommendation_dict.append(tuples)
-        
+            predictions.extend([(d,i) for d,i in zip(dist[0][1:], idxs[0][1:])])
+
+        print(predictions)
+
+        predictions.sort()
+        best_sample_titles = [titlemap[i] for _, i in predictions]
+        print(best_sample_titles)
+        cursor = get_cursor(conn)
+        # recommendation_dict.append(titlemap[i])
+
+        placeholders = "%s, " * (len(best_sample_titles) - 1) + "%s"
+        print(placeholders)
+
+        # ensure they havent read the book yet
+        id_query = f"""
+        SELECT b.Title, b.BookID
+        FROM bookdata b
+        WHERE
+            b.Title IN ({placeholders})
+            AND b.BookID NOT IN
+            (
+                SELECT c.BookID
+                FROM checkout c
+                WHERE c.Patron = '{username}'
+            )
+        LIMIT 5;"""
+        # id_query = f"""
+        # SELECT b.Title, b.BookID
+        # FROM bookdata b
+        # LEFT JOIN checkout c ON b.BookID = c.BookID AND c.Patron = '{username}'
+        # WHERE
+        #     b.Title IN ({placeholders})
+        #     AND c.BookID IS NULL
+        # LIMIT 5;"""
+        cursor.execute(id_query, best_sample_titles)
+
+        reccomended_titles_bids = cursor.fetchall()
+        print(reccomended_titles_bids)
+        cursor.close()
+
+
         return render(request,"home.html",{"form":form,
-                                           "info":recommendation_dict[1:],
-                                           "lastbook":recommendation_dict[0]})
-    return render(request,"home.html",{"form":form,"info":""})
+                                           "info":reccomended_titles_bids,
+                                           "lastbook":info[0]})
+
     # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
 
 def search(request):
