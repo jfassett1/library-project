@@ -273,10 +273,41 @@ def get_book_details(bookid:int):
         )
 
 def detailed_results(request, bookid):
+
+    #Code for recommendations
+    conn = MySQLdb.connect('db')
+    cursor = get_cursor(conn)
+    query = f"""SELECT Title FROM bookdata WHERE BookID = {bookid}"""
+    cursor.execute(query)
+    try:
+        info = cursor.fetchall()[0][0]
+        cursor.close()
+    except:
+        info = ""
+        # return render(request,"home.html",{"form":form,"info":info})
+    #Recommendation code
+    model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
+    neigh = joblib.load(r"./library_project/recommendation/neighbors.pkl")
+    titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
+    sample = model.infer_vector(preprocess_documents([info])[0])
+    dist, idxs = neigh.kneighbors([sample],6)
+    recommendation_dict = []
+    for i in idxs[0]:
+        cursor = get_cursor(conn)
+        # recommendation_dict.append(titlemap[i])
+        id_query = """SELECT Title,BookID
+        FROM bookdata
+        WHERE Title = %s;"""
+        cursor.execute(id_query,{titlemap[i]})
+        tuples = cursor.fetchall()
+        cursor.close()
+        recommendation_dict.append(tuples)
+        
+
     results = get_book_details(bookid)
     results["books"] = list(zip(results["codes"], results["status"]))
     results["best_status"] = min(results["status"])
-    return render(request, "search/details.html", {"results":results})
+    return render(request, "search/details.html", {"results":results,"lastbook":recommendation_dict[0],"info":recommendation_dict[1:]})
 
 
 
