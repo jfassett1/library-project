@@ -1,19 +1,22 @@
-function checkoutBook(bookID) {
+function returnBook() {
     // Perform AJAX request to Django backend using fetch
-    console.log(JSON.stringify({book_id:bookID}))
-    fetch('/checkout-book/', {
+    const book_decimal = document.getElementById("id_decimal").value
+
+
+    // console.log(JSON.stringify({book_id:book_decimal}))
+    fetch('/check-status/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             // You may need to include additional headers like CSRF token
             'X-CSRFToken': csrfToken // Define getCSRFToken() function
         },
-        body: JSON.stringify({book_id:bookID}),
+        body: JSON.stringify({book_decimal:book_decimal}),
     })
     .then(response => {
         // user not logged in redirect
         if (response.redirected === true) {
-            alert("Must be logged in to check out the book. Redirecting to login page.")
+            alert("Must be logged in as an admin to books. Redirecting to login page.")
             window.location.href = response.url;
             return response.json()
         } else {
@@ -32,11 +35,11 @@ function handleCheckoutResponse(response) {
     if (response === null) {
         return;
     } else if (response.success) {
-        alert('Book checked out successfully!');
-        location.reload();
-    } else if (response.waitlisted) {
-        alert('You have been added to the waitlist for this book.');
-        location.reload();
+        alert('Book found successfully!');
+        // location.reload();
+        console.log(response.book_status)
+    } else if (response.failed) {
+        alert('Book not found in checkout table');
     } else if (response.permission_denied) {
         alert('You do not have permission to check out this book.');
     } else {

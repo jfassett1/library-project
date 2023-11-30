@@ -23,6 +23,7 @@
         {% if staff %}
         <h3 style="color: red">Librarian Permissions</h3>
         <ul>
+            <li><a href="{% url 'return_book' %}">Return Book</a></li>
             <li><a href="{% url 'update' %}">Librarian Page</a></li>
         </ul>
         {% endif %}

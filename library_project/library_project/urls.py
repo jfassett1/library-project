@@ -17,12 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from . import views
-from django.contrib.auth.views import LoginView
 
 
 urlpatterns = [
     path("", views.homepage, name="home"),
-    # path("", views.landing, name = 'landing'),
     path("accounts/", include("django.contrib.auth.urls")),
     path("search/", views.search, name='search-page'),
     path('admin/', admin.site.urls),
@@ -31,8 +29,7 @@ urlpatterns = [
     path("update/", views.update, name="update"),
     path('change/', views.change, name='change'),
     path('checkout-book/', views.checkout_book, name='checkout_book'),
-    # path('login/', LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('return-book/', views.return_book, name='return_book'),
+    path('check-status/', views.check_status, name='check_status'),
     path("accounts/", include("accounts.urls")),  # new
-    # path("accounts/", include("django.contrib.auth.urls")),
-    # path('signup/')
 ]

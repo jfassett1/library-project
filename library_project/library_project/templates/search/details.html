@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}eLib - Home{% endblock %}
+{% block title %}eLib - {{results.title.0}}{% endblock %}
 {%block head%}
 <script> var csrfToken = '{{ csrf_token }}';</script>
 

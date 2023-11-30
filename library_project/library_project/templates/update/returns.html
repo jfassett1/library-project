@@ -1,0 +1,43 @@
+
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}eLib - Book Return{% endblock %}
+{%block head%}
+<script> var csrfToken = '{{ csrf_token }}';</script>
+
+<script src="{%static 'js/returnBook.js' %}"></script>
+
+<style>
+    .container-wrapper {
+        display: flex; /* Use flexbox for horizontal layout */
+        justify-content: space-between; /* Add space between the containers */
+    }
+
+    .container {
+        width: 48%; /* Adjust the width as needed */
+    }
+</style>
+
+{%endblock%}
+
+
+
+{%block body%}
+<div class="container">
+    <b>Return Book</b>
+    <form id="return_form" method="POST" action="{% url 'return_book'%}">
+        {% csrf_token %}
+        {% comment %} <input type="hidden" name="action" value="return"> {% endcomment %}
+        <table>
+        {{ returnForm.as_table }}
+        </table>
+        <p><button onClick="returnBook()">Check Book Status</button></p>
+        <br>
+        <button type="submit">Mark Book as returned</button>
+    </form>
+
+
+</div>
+{%endblock%}
