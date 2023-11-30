@@ -9,183 +9,25 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
-from utils.general import keys_values_to_dict
+from utils.general import find_similar_books, process_search_form
+from utils.general import (
+    get_copy_details, user_waitlist,
+    user_checkout, get_book_details,
+    make_recommendation, construct_search_query
+)
+
 
 from .forms import SearchForm, addForm, rmForm
 from .initialization.db_connect import get_cursor
-from django.contrib.auth.models import User
-
-import joblib
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from gensim.parsing.preprocessing import preprocess_documents
-from sklearn.neighbors import NearestNeighbors
-
-
-
 
 logger = logging.getLogger('django')
-# BOOK_STATUS = { "":2,"In stock":0,
-# "Out of stock":1,
-# "Reserved":2 }
-
-
-
-def construct_query(
-    search_term,
-    advanced_search_fields,
-    page_number:int,
-    results_per_page:int
-    ):
-    query = """
-    SELECT
-        bookdata.BookID,
-        bookdata.Title,
-        bookdata.Publisher,
-        GROUP_CONCAT(DISTINCT author.Name),
-        COUNT(DISTINCT book.DecimalCode) AS "num_copies",
-        MIN(book.Status)
-    FROM
-        bookdata
-        RIGHT JOIN category ON category.BookID = bookdata.BookID
-        RIGHT JOIN author ON bookdata.BookID = author.BookID
-        RIGHT JOIN book ON bookdata.BookID = book.BookID
-    WHERE
-        1
-    """
-    search_params = []
-    if search_term:
-
-        query += """
-        AND MATCH (bookdata.Title, bookdata.Description)
-            AGAINST (%s IN NATURAL LANGUAGE MODE)"""
-        search_params.append(search_term)
-
-    # Add advanced search conditions
-    for field, value in filter(lambda x: x[1] != '' and x[0] != "book.Status", advanced_search_fields.items()):
-        query += f" AND {field} LIKE %s"
-        search_params.append(f"%{value}%")
-
-
-    status = advanced_search_fields["book.Status"] if advanced_search_fields["book.Status"] != '' else 2
-    query += "\nGROUP BY\n    book.BookID\nHAVING MIN(book.Status) <= %s\n"
-    search_params.append(status)
-
-    # Add pagination
-    offset = (page_number - 1) * results_per_page
-    query += f" LIMIT {results_per_page} OFFSET {offset};"
-    # logger.info(query)
-
-    # return query, search_params
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-
-        if search_term or advanced_search_fields:
-            cursor.execute(query, search_params)
-        else:
-            cursor.execute(query)
-
-        # Fetch the results
-        results = cursor.fetchall()
-
-    # print(*results, sep="\n")
-
-    return results, query, search_params
 
 
 def homepage(request):
     form = SearchForm()
-    info = ""
-    # return render(request,"home.html",{"form":form,"info":info})
     if not request.user.is_authenticated:
         return render(request,"home.html",{"form":form,"info":""})
-        #SQL stuff
-    with MySQLdb.connect('db') as conn:
-        cursor = get_cursor(conn)
-        user = User.objects.get(username=request.user.username)
-
-        username = user.username
-
-        query = f"""
-        SELECT DISTINCT bc.Title, bc.TimeOut
-        FROM (
-            SELECT b.Title, c.TimeOut
-            FROM checkout as c
-            INNER JOIN bookdata as b ON c.BookID = b.BookID
-            WHERE c.Patron = '{username}'
-            ORDER BY c.TimeOut DESC
-        ) AS bc
-        ORDER BY bc.TimeOut DESC
-        LIMIT 5;"""
-
-        try:
-            cursor.execute(query)
-            info = [c[0] for c in cursor.fetchall()]
-            cursor.close()
-        except:
-            return render(request,"home.html",{"form":form,"info":info})
-        #Recommendation code
-        model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
-        neigh = joblib.load(r"./library_project/recommendation/neighbors.pkl")
-        titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
-
-        # process titles into list of strings
-        titles = preprocess_documents(info)
-        print(info)
-        # get neighbors
-        predictions = []
-        for j, title in enumerate(titles):
-            sample = model.infer_vector(title)
-            dist, idxs = neigh.kneighbors([sample],6)
-            print(dist)
-            dist /= 1+(1/(j+2)**j)
-            print(dist, idxs, info[j])
-
-            predictions.extend([(d,i) for d,i in zip(dist[0][1:], idxs[0][1:])])
-
-        print(predictions)
-
-        predictions.sort()
-        best_sample_titles = [titlemap[i] for _, i in predictions]
-        print(best_sample_titles)
-        cursor = get_cursor(conn)
-        # recommendation_dict.append(titlemap[i])
-
-        placeholders = "%s, " * (len(best_sample_titles) - 1) + "%s"
-        print(placeholders)
-
-        # ensure they havent read the book yet
-        id_query = f"""
-        SELECT b.Title, b.BookID
-        FROM bookdata b
-        WHERE
-            b.Title IN ({placeholders})
-            AND b.BookID NOT IN
-            (
-                SELECT c.BookID
-                FROM checkout c
-                WHERE c.Patron = '{username}'
-            )
-        LIMIT 5;"""
-        # id_query = f"""
-        # SELECT b.Title, b.BookID
-        # FROM bookdata b
-        # LEFT JOIN checkout c ON b.BookID = c.BookID AND c.Patron = '{username}'
-        # WHERE
-        #     b.Title IN ({placeholders})
-        #     AND c.BookID IS NULL
-        # LIMIT 5;"""
-        cursor.execute(id_query, best_sample_titles)
-
-        reccomended_titles_bids = cursor.fetchall()
-        print(reccomended_titles_bids)
-        cursor.close()
-
-
-        return render(request,"home.html",{"form":form,
-                                           "info":reccomended_titles_bids,
-                                           "lastbook":info[0]})
-
-    # return render(request, "home.html", {"form":form,"Name":firstname,"login":login})
+    return make_recommendation(request, form)
 
 def search(request):
     if request.method == "GET":
@@ -195,17 +37,11 @@ def search(request):
         if not form.is_valid():
             return render(request, "search/search.html")
 
-        # Construct the query based on form data
-        search_query = form.cleaned_data['raw_search']
-        advanced_search = {}
-        advanced_search["author.Name"] = form.cleaned_data['author']
-        advanced_search["category.CategoryName"] = form.cleaned_data['genre']
-        advanced_search["book.Status"] = form.cleaned_data['in_stock']
-        advanced_search["book.DecimalCode"] = form.cleaned_data['decimal_code']
-        advanced_search["bookdata.Title"] = form.cleaned_data['title']
-        page = form.cleaned_data["page"]
-        results, query, qfields = construct_query(search_query, advanced_search, page, 50)
-        results_numbers = (page-1) * 50
+
+        search_query, advanced_search, page = process_search_form(form)
+        RESULTS_PER_PAGE = 50
+        results, query, qfields = construct_search_query(search_query, advanced_search, page, RESULTS_PER_PAGE)
+        results_numbers = (page-1) * RESULTS_PER_PAGE
 
         temp = form.cleaned_data
         temp["page"] = 1
@@ -223,150 +59,28 @@ def search(request):
     return render(request, "search/search.html")
 
 
-def get_book_details(bookid:int):
-    # print(bookid, type(bookid))
-
-    query = """
-    SELECT
-        cb.Title AS 'Book Title',
-        GROUP_CONCAT(a.Name) AS 'Authors',
-        GROUP_CONCAT(DISTINCT c.CategoryName) AS 'Categories',
-        cb.Publisher AS 'Publisher Name',
-        cb.PublishDate AS 'Publish Date',
-        cb.Description AS 'Description',
-        COUNT(*) AS 'Number of Copies',
-        cb.DecimalCode AS 'Book Codes',
-        cb.Status AS 'Status',
-        MIN(cb.BookID) AS 'ID'
-    FROM
-        combined_bookdata cb
-        RIGHT JOIN category c ON cb.BookID = c.BookID
-        RIGHT JOIN author a ON cb.BookID = a.BookID
-    WHERE
-        cb.BookID = %s
-    GROUP BY
-        cb.BookID, cb.DecimalCode;
-    """
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        cursor.execute(query, (bookid,))
-
-        # Fetch the results
-        results = cursor.fetchall()
-
-
-    names = [
-        "title",  "authors", "category", "publisher",
-        "publishdate","description", "copies", "codes",
-        "status", "book_id"
-    ]
-    try:
-        return keys_values_to_dict(
-            names,
-            [tuple(r) for r in zip(*results)]
-        )
-    except ValueError as e:
-        print(e)
-        return keys_values_to_dict(
-            names,
-            ["Unknown"]*len(names)
-        )
-
 def detailed_results(request, bookid):
 
     #Code for recommendations
-    conn = MySQLdb.connect('db')
-    cursor = get_cursor(conn)
-    query = f"""SELECT Title FROM bookdata WHERE BookID = {bookid}"""
-    cursor.execute(query)
-    try:
-        info = cursor.fetchall()[0][0]
-        cursor.close()
-    except:
-        info = ""
+    with MySQLdb.connect('db') as conn:
+        cursor = get_cursor(conn)
+        query = f"""SELECT Title FROM bookdata WHERE BookID = {bookid}"""
+        cursor.execute(query)
+        try:
+            info = cursor.fetchall()[0][0]
+            cursor.close()
+        except MySQLdb.Error:
+            info = ""
         # return render(request,"home.html",{"form":form,"info":info})
     #Recommendation code
-    model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
-    neigh = joblib.load(r"./library_project/recommendation/neighbors.pkl")
-    titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
-    sample = model.infer_vector(preprocess_documents([info])[0])
-    dist, idxs = neigh.kneighbors([sample],6)
-    recommendation_dict = []
-    for i in idxs[0]:
-        cursor = get_cursor(conn)
-        # recommendation_dict.append(titlemap[i])
-        id_query = """SELECT Title,BookID
-        FROM bookdata
-        WHERE Title = %s;"""
-        cursor.execute(id_query,{titlemap[i]})
-        tuples = cursor.fetchall()
-        cursor.close()
-        recommendation_dict.append(tuples)
-        
+    recommendations = find_similar_books(request, info)
+
 
     results = get_book_details(bookid)
     results["books"] = list(zip(results["codes"], results["status"]))
     results["best_status"] = min(results["status"])
-    return render(request, "search/details.html", {"results":results,"lastbook":recommendation_dict[0],"info":recommendation_dict[1:]})
+    return render(request, "search/details.html", {"results":results,"lastbook":info,"info":recommendations})
 
-
-
-def get_copy_details(book_id:str):
-    query = """
-    SELECT
-        MIN(b.Status)
-    FROM
-        book b
-    WHERE
-        b.BookID = %s
-    GROUP BY
-        b.BookID
-    """
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        cursor.execute(query, (book_id,))
-
-        # Fetch the results
-        results = cursor.fetchall()
-    print(f"best status for {book_id}:",results)
-    # no results means no one in waitlist
-    return not results[0][0]
-
-def user_checkout(user, book_id):
-    query = """
-    INSERT INTO checkout (Patron, BookID, Status)
-    VALUES (%s, %s, %s);
-    """
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        try:
-            cursor.execute(query, (user, book_id, 0))
-            conn.commit()
-
-        except MySQLdb.Error as e:
-            print(e)
-            return False
-        else:
-            print(f"Checkout of {book_id} by {user} successful")
-            return True
-
-def user_waitlist(user, book_id):
-    query = """
-    INSERT INTO waitlist (Patron, BookID)
-    VALUES (%s,%s);
-    """
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        try:
-            cursor.execute(query, (user, book_id))
-            conn.commit()
-
-        except MySQLdb.Error as e:
-            print(e)
-            return False
-        else:
-            print(f"Waitlist of {book_id} by {user} successful")
-            return True
 
 
 @login_required
@@ -391,16 +105,6 @@ def checkout_book(request):
     # If the request method is not POST, return an error response
     return JsonResponse({'error': 'Invalid request method'})
 
-
-def landing(request):
-    return render(request,"landing.html")
-
-def lib(request):
-    return render(request,'librarian.html')
-
-def patron(request):
-
-    return render(request,"patron.html")
 
 @staff_member_required
 def update(request):
