@@ -4,7 +4,9 @@ To access the website created in django, use port 8000 on local host. Once again
 
 To get the books data, go [here](https://www.kaggle.com/datasets/mohamedbakhet/amazon-books-reviews/data?select=books_data.csv) and download just the books_data.csv file. Then place the file in the data folder.
 
-To get the models for book reccomendations, go [here]() and download all files. Place them in the recommendation folder in library_project.
+To get the models for book reccomendations, go [here](https://drive.google.com/drive/folders/11wyIan_J4kLuxLrKd0iZQDY44aQieQcx?usp=sharing) and download all `.model` files. Place them in the recommendation folder in library_project.
+
+To get the container you need to uncomment the default database SQLite3 in settings.py. Then run the container and then switch it back to the original setting.
 
 To add tables to the mysql database and populate them, simply use run the intialize_db.py file in the django container. Expect this to take approximately 8 minutes since this process includes the creation of embeddings for each book title in the database using the pretrained doc2vec model.
 

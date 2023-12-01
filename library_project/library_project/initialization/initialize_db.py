@@ -162,9 +162,7 @@ def gen_insert_data():
     # books = books[books["BookID"]!=1]
 
     # insert authors
-    # books = books.reset_index()
     books_without_dupes = books_with_duplicates.drop_duplicates("BookID").set_index("BookID")
-    # print("dropped dupes shape", books_without_dupes.shape)
     books_data = books_data.drop_duplicates("Title")
 
 
