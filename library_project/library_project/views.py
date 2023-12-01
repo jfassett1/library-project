@@ -41,11 +41,8 @@ def search(request):
         if not form.is_valid():
             return render(request, "search/search.html", {"form":SearchForm()})
 
-        search_query, advanced_search, page = process_search_form(form)
         RESULTS_PER_PAGE = 50
-        results, query, qfields = construct_search_query(
-            search_query, advanced_search, page, RESULTS_PER_PAGE
-        )
+        results, query, page = construct_search_query(form, RESULTS_PER_PAGE)
         results_numbers = (page - 1) * RESULTS_PER_PAGE
 
         temp = form.cleaned_data
@@ -145,12 +142,9 @@ def return_book(request):
         form = ReturnForm(request.GET)
         if not form.is_valid():
             return render(request, "update/returns.html",{"form":ReturnForm()} )
-        search_query, advanced_search, page = process_return_form(form)
 
         RESULTS_PER_PAGE = 50
-        results, query, qfields = construct_return_query(
-            search_query, advanced_search, page, RESULTS_PER_PAGE
-        )
+        results, query, page = construct_return_query(form, RESULTS_PER_PAGE)
         results_numbers = (page - 1) * RESULTS_PER_PAGE
 
         temp = form.cleaned_data
