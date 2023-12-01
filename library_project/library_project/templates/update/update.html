@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+
+
 {%block head%}
 <style>
     .container-wrapper {
@@ -13,6 +15,22 @@
     }
 </style>
 <script src="{%static 'js/searchOption.js' %}"></script>
+<script src="{%static 'js/crudForm.js' %}"></script>
+
+<script type="text/javascript">
+
+function showRM(formId) {
+    document.getElementById('rmBook').style.display = 'none';
+    document.getElementById('rmPatron').style.display = 'none';
+    document.getElementById(formId).style.display = 'block';
+}
+function showAdd(formId) {
+    document.getElementById('rmBook').style.display = 'none';
+    document.getElementById('rmPatron').style.display = 'none';
+    document.getElementById(formId).style.display = 'block';
+}
+
+</script>
 
 {%endblock%}
 
@@ -21,5 +39,7 @@
 {%block body%}
 {%include 'update/add.html'%}
 {%include 'update/remove.html'%}
+{%include 'update/alter.html'%}
+
 {%endblock%}
 

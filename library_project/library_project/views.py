@@ -20,7 +20,7 @@ from utils.general import (
     checkout_book_return
 )
 
-from .forms import ReturnForm, SearchForm, addForm, rmForm
+from .forms import ReturnForm, SearchForm, addForm, rmPatron,rmBook,alterBook,alterPatron
 from .initialization.db_connect import get_cursor
 
 logger = logging.getLogger("django")
@@ -180,7 +180,10 @@ def return_book(request):
 @staff_member_required
 def update(request):
     return render(
-        request, "update/update.html", {"addForm": addForm(), "rmForm": rmForm()}
+        request, "update/update.html", {"addForm": addForm(),
+                                         "rmBook": rmBook(),
+                                         "rmPatron":rmPatron(),
+                                         "alterBook":alterBook()}
     )
 
 
@@ -191,14 +194,145 @@ def change(request):
             return add_row(request)
         elif action == "remove":
             return remove_row(request)
+        elif action == "alter":
+            return alter_book(request)
         else:
             return HttpResponse("epic fail")
     return HttpResponse("epic fail")
 
 
+
+def alter_book(request):
+    if request.method != 'POST':
+        return render(request, "update/change.html", {"form": alterBook()})
+
+    form = alterBook(request.POST)
+    if not form.is_valid():
+        return render(request, "update/change.html", {"message": "Invalid form data", "form": form})
+
+    # Extract validated form data
+    alter_features = form.cleaned_data.get("alterfields")
+    searchby = form.cleaned_data.get("SEARCHBY")
+    searchparam = form.cleaned_data.get(searchby)
+    author = form.cleaned_data.get("author")
+    category = form.cleaned_data.get("category")
+
+    bookid = form.cleaned_data.get('bookid')  # Corrected from form.cleaned_data('bookid')
+    if searchby == 'decimal':
+        with MySQLdb.connect('db') as conn:
+            with get_cursor(conn,'library') as cursor:
+                idquery = "SELECT b.BookID FROM book AS b WHERE b.DecimalCode = %s"
+                cursor.execute(idquery, (searchparam,))
+                result = cursor.fetchone()
+                if result:
+                    bookid = result[0]
+                else:
+                    return render(request, "update/change.html", {"message": "No book found with the given DecimalCode"})
+
+    # Special cases for author and category
+    try:
+        with MySQLdb.connect('db') as conn:
+            with get_cursor(conn,'library') as cursor:
+                if 'author' in alter_features:
+                    alter_features.remove('author')
+                    cursor.execute("UPDATE author SET Name = %s WHERE BookID = %s", (author, bookid))
+                    conn.commit()
+
+                if 'category' in alter_features:
+                    alter_features.remove('category')
+                    cursor.execute("UPDATE category SET CategoryName = %s WHERE BookID = %s", (category, bookid))
+                    conn.commit()
+
+                # Update bookdata
+                if alter_features:
+                    set_clauses = [f"`{field}` = %s" for field in alter_features]
+                    params = [form.cleaned_data.get(field) for field in alter_features]
+                    bookdata_query = "UPDATE bookdata SET " + ", ".join(set_clauses) + " WHERE BookID = %s"
+                    params.append(bookid)
+                    cursor.execute(bookdata_query, params)
+                    conn.commit()
+    except MySQLdb.Error as e:
+        return render(request, "update/change.html", {"message": f"Database error: {e}"})
+
+    return render(request, "update/change.html", {"message": "Update successful", "query": bookdata_query})
+
+
+
+
+
+
+def alt_book(request):
+    # Display an empty form when the page is first loaded
+    if request.method != 'POST':
+        return render(request, "update/change.html", {"form": alterBook()})
+
+    form = alterBook(request.POST)
+    if not form.is_valid():
+        return render(request, "update/change.html", {"message": "Invalid form data", "form": form})
+
+    # Extract validated form data
+    alter_features = form.cleaned_data.get("alterfields")
+    searchby = form.cleaned_data.get("SEARCHBY")
+    searchparam = form.cleaned_data.get(searchby)
+    author = form.cleaned_data.get("author")
+    category = form.cleaned_data.get("category")
+
+
+
+    bookid = form.cleaned_data('bookid')
+    if searchby == 'decimal':
+        with MySQLdb.connect('db') as conn:
+            with get_cursor(conn,'library')as cursor:
+                idquery = "SELECT b.BookID FROM book AS b WHERE b.DecimalCode = %s"
+                cursor.execute(idquery, (searchparam,))
+                result = cursor.fetchone()
+                if result:
+                    bookid = result[0]  # Assuming that fetchone() returns a tuple with BookID as the first element
+                else:
+                    # Handle the case where no record is found
+                    return render(request, "update/change.html", {"message": "No book found with the given DecimalCode"})
+
+
+
+    #Search for special variables with separate(author & category)
+
+    if 'author' in alter_features:
+        alter_features.remove('author')
+        author_query = f"UPDATE author SET Name = {author}"
+
+    if 'category' in alter_features:
+        alter_features.remove('category')
+        cat_query = f"UPDATE category SET CategoryName = {category}"
+
+
+    # Prepare SQL query components
+    set_clauses = [f"`{field}` = %s" for field in alter_features]
+    params = [form.cleaned_data.get(field) for field in alter_features]
+
+
+    # Return if no fields are selected for update
+    if not set_clauses:
+        return render(request, "update/change.html", {"message": "No fields selected for update"})
+    #SEARCHING BY BOOKID
+    bookdata_query = f"UPDATE bookdata SET {', '.join(set_clauses)} WHERE `{bookid}` = %s"
+    #SEARCHING BY DECIMAL
+ 
+    params.append(searchparam)
+
+    # Execute the query
+    try:
+        with MySQLdb.connect('db') as conn:  
+            with get_cursor(conn,'library') as cursor:
+                cursor.execute(bookdata_query, params)
+                conn.commit()
+    except MySQLdb.Error as e:
+        return render(request, "update/change.html", {"message": f"Database error: {e}"})
+
+    return render(request, "update/change.html", {"message": alter_features, "query": (bookdata_query,params)})
+                    
 def remove_row(request):
     if request.method == "POST":
-        form = rmForm(request.POST)
+        form = rmBook(request.POST)
         if form.is_valid():
             conn = MySQLdb.connect("db")
             cursor = get_cursor(conn, "library")
@@ -272,7 +406,7 @@ def add_row(request):
             return render(
                 request,
                 "update/change.html",
-                {"message": message, "query": query_bookdata},
+                {"message": message, "query": [query_bookdata]},
             )
     return HttpResponse("Invalid request method")
 

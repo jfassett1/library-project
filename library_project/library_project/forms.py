@@ -48,7 +48,46 @@ class addForm(forms.Form):
     desc = forms.CharField(label="Description", widget=forms.Textarea(), required=False)
 
 
-class rmForm(forms.Form):
+class alterBook(forms.Form):
+
+    searchoptions = (("bookid", "BookID"), ("decimal", "Decimal"))
+    SEARCHBY = forms.ChoiceField(
+        widget=forms.RadioSelect, choices=searchoptions, initial="bookid", required=True
+    )
+    decimal = forms.CharField(label="Decimal Code", max_length=12, required=False)
+    bookid = forms.CharField(label="BookID", max_length=12, required=False)
+
+    fields = (
+        ('title', 'Title'),
+        ('author', 'Author'),
+        ('category', 'Category'),
+        ('publishdate', 'Year of Publication'),
+        ('publisher', 'Publisher'),
+        ('description', 'Description'),
+    )
+    alterfields = forms.MultipleChoiceField(
+        label="Which fields do you want to edit?",
+        widget=forms.CheckboxSelectMultiple, 
+        choices=fields, 
+        # initial=[0],  # Assuming you want "BookID" as the initial choice
+        required=True
+    )
+
+    title = forms.CharField(label="Title", max_length=100, required=False)
+    author = forms.CharField(label="Author", max_length=60, required=False)
+    category = forms.CharField(label="Category", max_length=200, required=False)
+    publishdate = forms.IntegerField(
+        label="Year of Publication", min_value=-9999, max_value=2100, required=False
+    )
+    publisher = forms.CharField(label="Publisher", max_length=200, required=False)
+    description = forms.CharField(label="Description", widget=forms.Textarea(), required=False)
+
+class alterPatron():
+    name = forms.CharField(label="Name", max_length=100, required=True)
+
+
+
+class rmBook(forms.Form):
     searchoptions = ((0, "BookID"), (1, "Decimal"))
     SEARCHBY = forms.ChoiceField(
         widget=forms.RadioSelect, choices=searchoptions, initial="BookID", required=True
@@ -63,6 +102,14 @@ class rmForm(forms.Form):
     # year = forms.IntegerField(label="Year of Publication",min_value=0,max_value=2100)
     # publisher = forms.CharField(label="Publisher",max_length = 50,required=True)
     # desc = forms.CharField(label="Description",max_length = 300,required=True)
+
+class rmPatron(forms.Form):
+    searchoptions = ((0, "Name"), (1, "PatronID"))
+    SEARCHBY = forms.ChoiceField(
+        widget=forms.RadioSelect, choices=searchoptions, initial="Name", required=True
+    )
+    patron_name = forms.CharField(label="Name",max_length=100)
+    patron_id = forms.IntegerField(label="Patron ID")
 
 
 class ReturnForm(forms.Form):

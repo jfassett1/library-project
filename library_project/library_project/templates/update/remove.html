@@ -1,12 +1,29 @@
-<div class="container">
-    <b>Remove Book</b>
-    <p>You must search by at least one parameter</p>
-    <form id="rmForm" method="POST" action="{% url 'change'%}">
+
+
+<div class="container" id = "remove">
+    <div style = "text-align: center;">
+    <h3>Select Patron or Bookdata for deletion</h3>
+    <button onclick="showRM('rmPatron')">Patron</button><button onclick = "showRM('rmBook')">Bookdata</button><br>
+    </div>
+
+    <form id="rmBook" method="POST" action="{% url 'change'%}">
+        <b>Remove Book</b>
+        <p>You must search by at least one parameter</p>
         {% csrf_token %}
 
         <input type="hidden" name="action" value="remove">
         <table>
-        {{ rmForm.as_table }}
+        {{ rmBook.as_table }}
+        </table>
+        <button type="submit">Submit</button>
+    </form>
+    <form id = "rmPatron" method = "POST" style = "display:none">
+        <b>Remove Patron</b>
+        <p>You must search by at least one parameter</p>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="remove">
+        <table>
+        {{ rmPatron.as_table }}
         </table>
         <button type="submit">Submit</button>
     </form>

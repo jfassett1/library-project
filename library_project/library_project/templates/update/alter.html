@@ -1,0 +1,12 @@
+<div class="container">
+    <b>Alter Book</b>
+    <form id="alterForm" method="POST" action="{% url 'change'%}">
+        <input type="hidden" name="action" value="alter">
+
+        {% csrf_token %}
+        <table>
+        {{ alterBook.as_table }}
+        </table>
+        <button type="submit">Submit</button>
+    </form>
+</div>
