@@ -96,7 +96,7 @@ def format_combined_data_df(book_data:pd.DataFrame, column)->pd.DataFrame:
 
 
     """
-    col_data = book_data[[column]].copy()
+    col_data = book_data.copy()
 
     #Turns string representations of list into actual list
     col_data[column] = col_data[column].apply(lambda x: eval(x))

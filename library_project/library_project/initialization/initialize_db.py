@@ -150,12 +150,12 @@ def gen_insert_data():
             "categories"
         ]
     ].set_index("Title")
-    print("preread:", data.head())
     # books = pd.merge(get_book_ids(), data, "inner", left_on="Title", right_index=True)
     updated_ids = get_book_ids()
-    print("postread:",updated_ids.head())
+
     # sample_data = pd.merge(populate_books.generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
     books_with_duplicates = pd.merge(updated_ids, data, how='inner', right_index=True, left_index=True)
+    print("with dupes shape", books_with_duplicates.shape)
     # books = populate_books.merge(
     #     updated_ids, data, False, "Title"
     # ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
@@ -164,20 +164,39 @@ def gen_insert_data():
     # insert authors
     # books = books.reset_index()
     books_without_dupes = books_with_duplicates.drop_duplicates("BookID").set_index("BookID")
-    authors = populate_books.format_combined_data_df(books_without_dupes, "authors")
-    insert("author","BookID, Name",populate_books.books_to_tuples(authors, True)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
+    # print("dropped dupes shape", books_without_dupes.shape)
+    books_data = books_data.drop_duplicates("Title")
+
+
+    authors = populate_books.format_combined_data_df(books_data, "authors")
+    authors.set_index("Title",inplace=True)
+    authors = pd.merge(authors, updated_ids, how='left', right_index=True, left_index=True)
+    authors = authors[["BookID", "authors"]]
+    authors.drop_duplicates(inplace=True)
+    authors.set_index("BookID", inplace=True)
+    # authors = populate_books.format_combined_data_df(books_without_dupes, "authors")
+    insert(
+        "author",
+        "BookID, Name",
+        populate_books.books_to_tuples(pd.DataFrame(authors["authors"]), True),
+        " ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)"
+    )
     # insert categories
     categories = populate_books.format_combined_data_df(
         books_without_dupes, "categories"
-        ).apply(
-            lambda x: populate_books.auto_truncate(x, 500)
         )
-    insert("category","BookID, CategoryName", populate_books.books_to_tuples(categories, True), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
+    categories = pd.DataFrame(categories["categories"].apply(
+            lambda x: populate_books.auto_truncate(x, 500)
+        ))
+    insert(
+        "category",
+        "BookID, CategoryName",
+        populate_books.books_to_tuples(categories, True),
+        # " ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)"
+    )
 
-    print("\nbefore decimal\n\n", books_with_duplicates.head())
     books = populate_books.generate_shelf_decimal(books_with_duplicates)
-
-    print("\nafter merge\n\n",books_with_duplicates.head())
+    books.drop(index=0, inplace=True)
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
 
