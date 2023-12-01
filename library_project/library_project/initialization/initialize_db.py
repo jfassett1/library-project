@@ -66,19 +66,26 @@ procedures = {
     # put book on hold for 3 days
     # delete person from waitlist
     'move_to_hold_from_waitlist':"""
-CREATE PROCEDURE move_to_hold_from_waitlist(IN decimal_code_value INT)
+CREATE PROCEDURE move_to_hold_from_waitlist(IN decimal_code_value VARCHAR(25))
 BEGIN
-    DECLARE patron_id_var INT;
-    DECLARE waitlist_id_var INT;
+    DECLARE patron_id_var VARCHAR(150);
+    DECLARE waitlist_id_var BIGINT;
     DECLARE due_date_var DATE;
     DECLARE book_id_var INT;
 
-    SET book_id_var = (SELECT BookID FROM checkout WHERE DecimalCode = decimal_code_value);
+
+    SET book_id_var = (
+        SELECT BookID
+        FROM checkout
+        WHERE DecimalCode = decimal_code_value
+        LIMIT 1);
+
+    SELECT concat('book_id is ', book_id_var);
 
     SELECT Patron, ListID INTO patron_id_var, waitlist_id_var
     FROM waitlist
     WHERE BookID = book_id_var
-    ORDER BY ListID
+    ORDER BY ListID ASC
     LIMIT 1;
 
     IF patron_id_var IS NOT NULL THEN
@@ -394,7 +401,7 @@ def refresh(which:str="TABLE"):
                 print("Data removed successfully!")
 
 def refresh_all():
-    for kind in ("VIEW", "TRIGGER", "EVENT", "TABLE",):
+    for kind in ("VIEW", "TRIGGER", "EVENT", "TABLE","PROCEDURE"):
         refresh(kind)
 
 
