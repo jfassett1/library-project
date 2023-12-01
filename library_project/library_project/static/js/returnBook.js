@@ -38,6 +38,7 @@ function handleCheckoutResponse(response) {
         alert('Book found successfully!');
         // location.reload();
         console.log(response.book_status)
+        location.reload();
     } else if (response.failed) {
         alert('Book not found in checkout table');
     } else if (response.permission_denied) {

@@ -325,6 +325,8 @@ def make_recommendation(request, form):
             cursor.close()
         except MySQLdb.Error:
             return render(request, "home.html", {"form": form, "info": info})
+        if not info:
+            render(request, "home.html", {"form": form, "info": ""})
         reccomended_titles_bids = find_unread_book_id(
             predict_similar(info), username, conn
         )
@@ -463,10 +465,12 @@ def checkout_book_hold(book_decimal:str, new_status:int=0):
         c.DecimalCode = %s
         AND c.Status = 3;
     """
+    procedure_call_query = "CALL MoveToHoldFromWaitlist(%s);"
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
             cursor.execute(query, (new_status, book_decimal))
+            cursor.execute(procedure_call_query, (book_decimal))
             conn.commit()
 
         except MySQLdb.Error as e:

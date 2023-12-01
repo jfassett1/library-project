@@ -57,69 +57,39 @@ triggers = {
     BEGIN
         UPDATE book SET book.Status = 2 WHERE book.BookID = NEW.BookID;
     END;
-    """,
-    # when a book is returned (checkout.status = 2)
+    """
+}
+list_of_triggers = list(triggers.keys())
+procedures = {
+    # call when a book is returned (checkout.status = 2)
     # move first person from waitlist to checkout
     # set checkout status to on hold (3)
     # put book on hold for 3 days
     # delete person from waitlist
-    "move_to_hold_from_waitlist":
-    """
-    CREATE TRIGGER move_to_hold_from_waitlist
-    AFTER UPDATE ON checkout
-    FOR EACH ROW
-    BEGIN
-        IF NEW.Status = 2 THEN
-            SET @patron_id := NULL;
-            SET @waitlist_id := NULL;
-            SET @due_date := NULL;
+    'move_to_hold_from_waitlist':"""
+CREATE PROCEDURE move_to_hold_from_waitlist(IN decimal_code_value INT)
+BEGIN
+    DECLARE patron_id_var INT;
+    DECLARE waitlist_id_var INT;
+    DECLARE due_date_var DATE;
 
-            SELECT Patron, ListID INTO @patron_id, @waitlist_id
-            FROM waitlist
-            WHERE BookID = NEW.BookID
-            ORDER BY ListID
-            LIMIT 1;
+    SELECT Patron, ListID INTO patron_id_var, waitlist_id_var
+    FROM waitlist
+    WHERE BookID = (SELECT BookID FROM checkout WHERE DecimalCode = decimal_code_value)
+    ORDER BY ListID
+    LIMIT 1;
 
-            IF @patron_id IS NOT NULL THEN
-                SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
+    IF patron_id_var IS NOT NULL THEN
+        SET due_date_var = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
 
-                INSERT INTO checkout (Patron, BookID, DecimalCode, Due, Status)
-                VALUES (@patron_id, NEW.BookID, NEW.DecimalCode, @due_date, 3);
+        INSERT INTO checkout (Patron, BookID, DecimalCode, Due, Status)
+        VALUES (patron_id_var, (SELECT BookID FROM checkout WHERE DecimalCode = decimal_code_value), decimal_code_value, due_date_var, 3);
 
-                DELETE FROM waitlist WHERE ListID = @waitlist_id;
-            END IF;
-        END IF;
-    END
-
-        """
-    # """
-    # CREATE TRIGGER update_book_availability
-    # AFTER UPDATE ON book
-    # FOR EACH ROW
-    # BEGIN
-    #     IF NEW.Status = 0 THEN
-    #         SET @patron_id := NULL;
-    #         SET @checkout_time := NULL;
-    #         SET @due_date := NULL;
-
-    #         SELECT Patron, TimeOut INTO @patron_id, @checkout_time
-    #         FROM checkout
-    #         WHERE DecimalCode = NEW.DecimalCode AND Status = 3
-    #         LIMIT 1;
-
-    #         IF @patron_id IS NOT NULL THEN
-    #             SET @due_date = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
-
-    #             INSERT INTO checkout (Patron, DecimalCode, TimeOut, Due, Status)
-    #             VALUES (@patron_id, NEW.DecimalCode, @checkout_time, @due_date, 3);
-
-    #             DELETE FROM waitlist WHERE BookID = NEW.BookID LIMIT 1;
-    #         END IF;
-    #     END IF;
-    # END
-    # """
+        DELETE FROM waitlist WHERE ListID = waitlist_id_var;
+    END IF;
+END
+"""
 }
-list_of_triggers = list(triggers.keys())
 #Creating tables
 tables = {
 'patron': """
@@ -236,6 +206,10 @@ def create_trigger():
 
 def create_scheduled_event():
     create_mysql_object(scheduled_events, "scheduled event")
+
+def create_procedure():
+    create_mysql_object(procedures, "procedure")
+
 
 def insert(table:str, fields:str, values:tuple[tuple, ...]|tuple[str, ...],additional:str=""):
 
@@ -373,6 +347,7 @@ def initialize():
     create_table()
     create_view()
     create_trigger()
+    create_procedure()
     create_scheduled_event()
     gen_insert_data()
 
@@ -395,6 +370,8 @@ def refresh(which:str="TABLE"):
             names = list(triggers.keys())
         case "EVENT":
             names = list(scheduled_events.keys())
+        case "PROCEDURE":
+            names = list(procedures.keys())
 
     if not names:
         return
@@ -440,6 +417,9 @@ if __name__ == "__main__":
         refresh("EVENT")
         create_scheduled_event()
 
+    if "procedure" in sys.argv:
+        refresh("PROCEDURE")
+        create_procedure()
 
     end_time = time.time()-start_time
     print(f"It took {end_time:.2f} seconds to initialize")
