@@ -1,10 +1,28 @@
-<div class="container">
-    <b>Add Book</b>
-    <form id="addForm" method="POST" action="{% url 'change'%}">
-        {% csrf_token %}
+<div class="container" id = "add">
+    <div style = "text-align: center;">
+        <h2>Add</h2>
+        <h3>Select Patron or Bookdata</h3>
+        <button onclick="showAdd('addBook')">Book</button><button onclick = "showAdd('addPatron')">Patron</button><br>
+
+        </div>
+
+    <form id="addBook" method="POST" action="{% url 'change'%}">
         <input type="hidden" name="action" value="add">
+        <b>Add Book</b>
+        {% csrf_token %}
         <table>
         {{ addForm.as_table }}
+        </table>
+        <button type="submit">Submit</button>
+    </form>
+
+    <form id="addPatron" method="POST" action="{% url 'change'%}" style = "display:none">
+        <input type="hidden" name="action" value="addPatron">
+        <b>Add Patron</b>
+        <p>You must search by at least one parameter</p>
+        {% csrf_token %}
+        <table>
+        {{ addPatron.as_table }}
         </table>
         <button type="submit">Submit</button>
     </form>
