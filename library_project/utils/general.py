@@ -326,7 +326,8 @@ def make_recommendation(request, form):
         except MySQLdb.Error:
             return render(request, "home.html", {"form": form, "info": info})
         if not info:
-            render(request, "home.html", {"form": form, "info": ""})
+            return render(request, "home.html", {"form": form, "info": ""})
+
         reccomended_titles_bids = find_unread_book_id(
             predict_similar(info), username, conn
         )
