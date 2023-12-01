@@ -80,13 +80,13 @@ BEGIN
         WHERE DecimalCode = decimal_code_value
         LIMIT 1);
 
-    SELECT concat('book_id is ', book_id_var);
 
     SELECT Patron, ListID INTO patron_id_var, waitlist_id_var
     FROM waitlist
     WHERE BookID = book_id_var
     ORDER BY ListID ASC
     LIMIT 1;
+    SELECT concat('patron is ', book_id_var);
 
     IF patron_id_var IS NOT NULL THEN
         SET due_date_var = DATE_ADD(CURDATE(), INTERVAL 3 DAY);

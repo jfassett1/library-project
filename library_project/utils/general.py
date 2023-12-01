@@ -432,6 +432,23 @@ def get_copy_status(book_decimal: str):
     # no results means no one in waitlist
     return results[0][0]
 
+
+def move_from_waitlist(book_decimal):
+    procedure_call_query = f"CALL move_to_hold_from_waitlist('{book_decimal}');"
+
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        try:
+            cursor.execute(procedure_call_query,)
+            cursor.close()
+            conn.commit()
+        except MySQLdb.Error as e:
+            print(e)
+            return False
+        else:
+            print(f"Return of {book_decimal} successful")
+            return True
+
 def checkout_book_return(book_decimal:str, new_status:int=2):
     query = """
     UPDATE
@@ -442,22 +459,21 @@ def checkout_book_return(book_decimal:str, new_status:int=2):
         c.DecimalCode = %s
         AND c.Status IN (0,1);
     """
-    procedure_call_query = "CALL move_to_hold_from_waitlist(%s);"
 
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
             cursor.execute(query, (new_status, book_decimal))
+            cursor.close()
             conn.commit()
-            cursor.execute(procedure_call_query, (book_decimal,))
-            conn.commit()
-
         except MySQLdb.Error as e:
             print(e)
             return False
-        else:
-            print(f"Return of {book_decimal} successful")
-            return True
+
+    # return move_from_waitlist(book_decimal)
+    return move_from_waitlist(book_decimal)
+
+
 
 def checkout_book_hold(book_decimal:str, new_status:int=0):
     query = """
