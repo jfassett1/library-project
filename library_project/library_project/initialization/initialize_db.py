@@ -34,6 +34,8 @@ triggers = {
         IF new_status = 0 THEN
             SET NEW.DecimalCode = decimal_code_to_update;
             UPDATE book SET Status = 1 WHERE DecimalCode = decimal_code_to_update;
+        ELSEIF new_status = 3 THEN
+            UPDATE book SET Status = 2 WHERE BookID = NEW.BookID;
         END IF;
     END
     """,
@@ -70,37 +72,89 @@ CREATE PROCEDURE move_to_hold_from_waitlist(IN decimal_code_value VARCHAR(25))
 BEGIN
     DECLARE patron_id_var VARCHAR(150);
     DECLARE waitlist_id_var BIGINT;
-    DECLARE due_date_var DATE;
     DECLARE book_id_var INT;
 
 
-    SET book_id_var = (
-        SELECT BookID
-        FROM checkout
-        WHERE DecimalCode = decimal_code_value
-        LIMIT 1);
+    SELECT BookID INTO book_id_var
+    FROM checkout
+    WHERE DecimalCode = decimal_code_value
+    LIMIT 1;
 
+    UPDATE
+        checkout c
+    SET
+        c.Status = 2
+    WHERE
+        c.DecimalCode = decimal_code_value
+        AND c.Status <> 2;
 
     SELECT Patron, ListID INTO patron_id_var, waitlist_id_var
     FROM waitlist
     WHERE BookID = book_id_var
     ORDER BY ListID ASC
     LIMIT 1;
-    SELECT concat('patron is ', book_id_var);
 
     IF patron_id_var IS NOT NULL THEN
-        SET due_date_var = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
-
 
         INSERT INTO checkout (Patron, BookID, DecimalCode, Due, Status)
-        VALUES (patron_id_var, book_id_var, decimal_code_value, due_date_var, 3);
-
-        UPDATE book SET Status = 2 WHERE BookID = book_id_var;
+        VALUES (patron_id_var, book_id_var, decimal_code_value, DATE_ADD(CURDATE(), INTERVAL 3 DAY), 3);
 
         DELETE FROM waitlist WHERE ListID = waitlist_id_var;
+
     END IF;
 END
+""",
+'return_hold_books_proc':"""
+CREATE PROCEDURE return_hold_books_proc()
+BEGIN
+    CREATE TEMPORARY TABLE temp_waitlist_to_delete AS
+    SELECT
+        w.Patron,
+        w.ListID,
+        c.BookID,
+        c.DecimalCode
+    FROM
+        waitlist w
+    JOIN
+        checkout c ON w.BookID = c.BookID
+    WHERE
+        c.Status = 3
+        AND CURRENT_DATE > c.Due
+        AND w.ListID = (
+            SELECT MIN(ListID)
+            FROM waitlist
+            WHERE BookID = c.BookID
+        );
+
+    -- insert selected rows into checkout
+    INSERT INTO checkout (Patron, DecimalCode, BookID, TimeOut, Due, Status)
+    SELECT
+        t.Patron,
+        t.DecimalCode,
+        t.BookID,
+        NOW() AS TimeOut,
+        DATE_ADD(CURDATE(), INTERVAL 3 DAY) AS Due,
+        3 AS Status
+    FROM
+        temp_waitlist_to_delete t
+    ORDER BY
+        t.ListID;
+
+    -- update Status to 2 for the same rows in checkout
+    UPDATE checkout c
+    JOIN temp_waitlist_to_delete t ON c.DecimalCode = t.DecimalCode
+    SET c.Status = 2
+    WHERE CURRENT_DATE > c.Due;
+
+    -- delete rows from waitlist using the temporary table
+    DELETE FROM waitlist WHERE ListID IN (SELECT ListID FROM temp_waitlist_to_delete);
+
+    -- drop the temporary table
+    DROP TEMPORARY TABLE IF EXISTS temp_waitlist_to_delete;
+END
 """
+    # ELSE
+    #     UPDATE book SET Status = 0 WHERE DecimalCode = decimal_code_value;
 }
 #Creating tables
 tables = {
@@ -181,7 +235,17 @@ DO
 BEGIN
     UPDATE checkout c
     SET c.Status = 1
-    WHERE c.Due < CURRENT_DATE;
+    WHERE
+        c.Due < CURRENT_DATE
+        AND c.Status = 0;
+END;
+""",
+'return_hold_books':"""
+CREATE EVENT return_hold_books
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    CALL return_hold_books_proc();
 END;
 
 """
