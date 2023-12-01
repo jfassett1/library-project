@@ -138,15 +138,6 @@ def check_status(request):
     # If the request method is not POST, return an error response
     return JsonResponse({"error": "Invalid request method"})
 
-# @staff_member_required
-# def return_book(request):
-#     if request.method == "POST":
-#         form = ReturnForm(request.POST)
-#         data = form.cleaned_data
-#         return_status = checkout_book_return(data.cleaned_data['decimal_code'])
-#         return render(request, "update/returns.html", {"return_status":return_status,"returnForm":form})
-#     else:
-#         return render(request, "update/returns.html", {"return_status":None,"returnForm":ReturnForm()})
 
 @staff_member_required
 def return_book(request):
@@ -185,7 +176,7 @@ def update(request):
                                          "rmPatron":rmPatron(),
                                          "alterBook":alterBook(),
                                          "alterPatron":alterPatron()}
-                                        
+
     )
 
 
