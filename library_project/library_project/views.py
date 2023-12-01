@@ -29,6 +29,7 @@ from .forms import (
     alterPatron,
     rmBook,
     rmPatron,
+    addPatron,
 )
 from .initialization.db_connect import get_cursor
 
@@ -180,6 +181,7 @@ def update(request):
         "update/update.html",
         {
             "addForm": addForm(),
+            "addPatron":addPatron(),
             "rmBook": rmBook(),
             "rmPatron": rmPatron(),
             "alterBook": alterBook(),
@@ -193,6 +195,8 @@ def change(request):
         action = request.POST.get("action", "")
         if action == "add":
             return add_row(request)
+        elif action == "addPatron":
+            return add_patron(request)
         elif action == "remove":
             return remove_row(request)
         elif action == "alter":
@@ -373,6 +377,28 @@ def remove_row(request):
     return HttpResponse("Invalid request method")
 
 
+def add_patron(request):
+    if request.method == "POST":
+        form = addPatron()
+        if form.is_valid():
+            name = form.cleaned_data.get('name')
+            address= form.cleaned_data.get('address')
+            email = form.cleaned_data.get('email')
+
+            with MySQLdb.connect('db') as conn:
+                with get_cursor(conn,'library') as cursor:
+                    query = f"INSERT INTO patron (Name, Address, Email) VALUES({name}, {address}, {email})"
+
+            try:
+                cursor.execute(query)
+                conn.commit()
+                message = "Success"
+            except MySQLdb.Error as e:
+                message = e
+            return render(
+                request,
+                "update/change.html",
+                {"message": message, "query": [query]})
 def add_row(request):
     if request.method == "POST":
         form = addForm(request.POST)
@@ -381,7 +407,6 @@ def add_row(request):
             cursor = get_cursor(conn, "library")
 
             # Form data is valid, so you can process and save it to the database
-
             title = form.cleaned_data["title"]
             author = form.cleaned_data["author"]
             publisher = form.cleaned_data["publisher"]
@@ -395,6 +420,17 @@ def add_row(request):
                 "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             )
 
+            query_decimal = f"""SELECT
+                     SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf
+                FROM
+                    book cb"""
+
+            #Getting decimal
+            try:
+                cursor.execute(query_decimal)
+                decimal = cursor.fetchone()
+            except MySQLdb.Error as e:
+                return HttpResponse(f"{e}")
             try:
                 # Bookdata Query
                 cursor.execute(query_bookdata)
@@ -403,6 +439,7 @@ def add_row(request):
                 # Author Query
                 cursor.execute(query_author, (bookID, author))
                 cursor.execute(query_category, (bookID, category))
+                
 
                 conn.commit()
                 message = mark_safe(f"Insert Successful!<br>{bookID}")
@@ -411,7 +448,7 @@ def add_row(request):
             return render(
                 request,
                 "update/change.html",
-                {"message": message, "query": [query_bookdata]},
+                {"message": message, "query": [query_bookdata,decimal]},
             )
     return HttpResponse("Invalid request method")
 

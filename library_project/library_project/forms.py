@@ -35,6 +35,11 @@ class SearchForm(forms.Form):
     page = forms.IntegerField(min_value=1, widget=forms.HiddenInput(), initial=1)
 
 
+class addPatron(forms.Form):
+    name = forms.CharField(label="Name", max_length=50, required=True)
+    address = forms.CharField(label = "Address",max_length=100)
+    email = forms.EmailField(label="Email Address",max_length=40)
+
 class addForm(forms.Form):
     title = forms.CharField(label="Title", max_length=100, required=True)
     author = forms.CharField(label="Author", max_length=60, required=False)
