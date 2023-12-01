@@ -196,7 +196,7 @@ def gen_insert_data():
     )
 
     books = populate_books.generate_shelf_decimal(books_with_duplicates)
-    books.drop(index=0, inplace=True)
+    books.drop(0, inplace=True)
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
 
