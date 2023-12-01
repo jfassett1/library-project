@@ -59,7 +59,6 @@ triggers = {
     END;
     """
 }
-list_of_triggers = list(triggers.keys())
 procedures = {
     # call when a book is returned (checkout.status = 2)
     # move first person from waitlist to checkout
@@ -72,18 +71,24 @@ BEGIN
     DECLARE patron_id_var INT;
     DECLARE waitlist_id_var INT;
     DECLARE due_date_var DATE;
+    DECLARE book_id_var INT;
+
+    SET book_id_var = (SELECT BookID FROM checkout WHERE DecimalCode = decimal_code_value);
 
     SELECT Patron, ListID INTO patron_id_var, waitlist_id_var
     FROM waitlist
-    WHERE BookID = (SELECT BookID FROM checkout WHERE DecimalCode = decimal_code_value)
+    WHERE BookID = book_id_var
     ORDER BY ListID
     LIMIT 1;
 
     IF patron_id_var IS NOT NULL THEN
         SET due_date_var = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
 
+
         INSERT INTO checkout (Patron, BookID, DecimalCode, Due, Status)
-        VALUES (patron_id_var, (SELECT BookID FROM checkout WHERE DecimalCode = decimal_code_value), decimal_code_value, due_date_var, 3);
+        VALUES (patron_id_var, book_id_var, decimal_code_value, due_date_var, 3);
+
+        UPDATE book SET Status = 2 WHERE BookID = book_id_var;
 
         DELETE FROM waitlist WHERE ListID = waitlist_id_var;
     END IF;

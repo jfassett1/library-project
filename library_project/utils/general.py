@@ -442,10 +442,14 @@ def checkout_book_return(book_decimal:str, new_status:int=2):
         c.DecimalCode = %s
         AND c.Status IN (0,1);
     """
+    procedure_call_query = "CALL move_to_hold_from_waitlist(%s);"
+
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
             cursor.execute(query, (new_status, book_decimal))
+            conn.commit()
+            cursor.execute(procedure_call_query, (book_decimal,))
             conn.commit()
 
         except MySQLdb.Error as e:
@@ -466,12 +470,11 @@ def checkout_book_hold(book_decimal:str, new_status:int=0):
         c.DecimalCode = %s
         AND c.Status = 3;
     """
-    procedure_call_query = "CALL MoveToHoldFromWaitlist(%s);"
+
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
             cursor.execute(query, (new_status, book_decimal))
-            cursor.execute(procedure_call_query, (book_decimal))
             conn.commit()
 
         except MySQLdb.Error as e:
