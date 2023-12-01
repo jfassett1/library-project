@@ -1,0 +1,57 @@
+patron = """
+
+CREATE TABLE patron (
+    AccID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50) NOT NULL,
+    Address VARCHAR(100) NOT NULL,
+    Email VARCHAR(40) NOT NULL
+);"""
+bookdata = """
+
+CREATE TABLE bookdata (
+	BookID INT PRIMARY KEY AUTO_INCREMENT,
+	Title VARCHAR(255) NOT NULL,
+	PublishDate INT,
+	Publisher VARCHAR(50),
+	Description TEXT,
+    FULLTEXT idx (Title, Description)
+) Engine = InnoDB;"""
+author = """
+
+CREATE TABLE author (
+    BookID INT REFERENCES bookdata(BookID),
+    Name VARCHAR(200) DEFAULT 'UNKNOWN',
+    PRIMARY KEY (BookID, Name)
+);"""
+category = """
+
+CREATE TABLE category (
+    BookID INT REFERENCES bookdata(BookID),
+    CategoryName VARCHAR(500) DEFAULT 'UNKNOWN',
+    PRIMARY KEY (BookID, CategoryName)
+);"""
+book = """
+
+CREATE TABLE book (
+    DecimalCode VARCHAR(25) PRIMARY KEY,
+    BookID INT REFERENCES bookdata(BookID),
+    Status TINYINT NOT NULL
+);"""
+checkout = """
+
+CREATE TABLE checkout (
+    Patron VARCHAR(150) REFERENCES auth_user(username),
+    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
+    BookID VARCHAR(25) REFERENCES bookdata(BookID),
+    TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),
+    Status TINYINT NOT NULL,
+    PRIMARY KEY (DecimalCode, TimeOut)
+);"""
+waitlist = """
+
+CREATE TABLE waitlist (
+    ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
+    Patron VARCHAR(150) REFERENCES auth_user(username),
+    BookID INT REFERENCES bookdata(BookID)
+);"""

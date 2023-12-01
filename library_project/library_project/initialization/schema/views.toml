@@ -1,0 +1,15 @@
+combined_bookdata = """
+
+CREATE VIEW combined_bookdata AS
+SELECT
+    bd.BookID,
+    bd.Title,
+    bd.PublishDate,
+    bd.Publisher,
+    bd.Description,
+    b.DecimalCode,
+    b.Status
+FROM
+    book b
+    INNER JOIN bookdata bd ON bd.BookID = b.BookID;
+"""
