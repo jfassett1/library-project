@@ -46,10 +46,8 @@ def create_mysql_object(objects:dict, kind:str):
 def create_table():
     create_mysql_object(tables, "table")
 
-
 def create_view():
     create_mysql_object(views, "view")
-
 
 def create_trigger():
     create_mysql_object(triggers, "trigger")
@@ -141,40 +139,47 @@ def gen_insert_data():
     books_data = populate_books.read_books_data(50_000)
     insert("bookdata",
            "Title, PublishDate, Publisher, Description",
-           populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
+        #    populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
+           populate_books.books_to_tuples(books_data[["Title", "publishedDate", "publisher", "description"]]))
 
     # extract and merge book data with correct book id
     data = books_data[
         [
             "Title",
-            "publishedDate",
-            "publisher",
-            "description",
-            "DecimalCode",
-            "BookStatus",
             "authors",
             "categories"
         ]
     ].set_index("Title")
-
+    print("preread:", data.head())
     # books = pd.merge(get_book_ids(), data, "inner", left_on="Title", right_index=True)
     updated_ids = get_book_ids()
+    print("postread:",updated_ids.head())
+    # sample_data = pd.merge(populate_books.generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
+    books_with_duplicates = pd.merge(updated_ids, data, how='inner', right_index=True, left_index=True)
+    # books = populate_books.merge(
+    #     updated_ids, data, False, "Title"
+    # ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
+    # books = books[books["BookID"]!=1]
 
-    books = populate_books.merge(
-        updated_ids, data, False, "Title"
-    ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
-    books = books[books["BookID"]!=1]
-
-    # insert books
-    insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
-    books.reset_index()
-    books = books.set_index("BookID")
-    authors = populate_books.format_combined_data_df(books, "authors")
+    # books = books.reset_index()
+    books_without_dupes = books_with_duplicates.drop_duplicates("BookID").set_index("BookID")
+    authors = populate_books.format_combined_data_df(books_without_dupes, "authors")
     insert("author","BookID, Name",populate_books.books_to_tuples(authors, True)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert categories
-    categories = populate_books.format_combined_data_df(books, "categories")
+    categories = populate_books.format_combined_data_df(
+        books_without_dupes, "categories"
+        ).apply(
+            lambda x: populate_books.auto_truncate(x, 500)
+        )
     insert("category","BookID, CategoryName", populate_books.books_to_tuples(categories, True), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
+
+    print("\nbefore decimal\n\n", books_with_duplicates.head())
+    books = populate_books.generate_shelf_decimal(books_with_duplicates)
+
+    print("\nafter merge\n\n",books_with_duplicates.head())
+    # insert books
+    insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
 
     # Create 100 fake patrons
     fake = Faker()
