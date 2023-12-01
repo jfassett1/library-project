@@ -194,7 +194,8 @@ def gen_insert_data():
     )
 
     books = populate_books.generate_shelf_decimal(books_with_duplicates)
-    books.drop(0, inplace=True)
+    books = books[books["BookID"]!=1]
+    books = books[books["BookID"]!=0]
     # insert books
     insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
 
@@ -210,7 +211,7 @@ def gen_insert_data():
 
 
     insert("patron","Name, Address, Email",values)
-    train_knn(updated_ids)
+    # train_knn(updated_ids)
 
 
 
