@@ -208,7 +208,7 @@ def construct_return_query(
         if advanced_search_fields["ch.Status"] != ""
         else 0
     )
-    query += "\nAND ch.Status >= %s\n"
+    query += "\nAND ch.Status = %s\n"
     search_params.append(status)
 
     # Add pagination
@@ -433,7 +433,8 @@ def get_copy_status(book_decimal: str):
     return results[0][0]
 
 
-def move_from_waitlist(book_decimal):
+def checkout_book_return(book_decimal:str, new_status:int=2):
+    # returns book and moves person from waitlist if they exist
     procedure_call_query = f"CALL move_to_hold_from_waitlist('{book_decimal}');"
 
     with MySQLdb.connect("db") as conn:
@@ -449,30 +450,6 @@ def move_from_waitlist(book_decimal):
             print(f"Return of {book_decimal} successful")
             return True
 
-def checkout_book_return(book_decimal:str, new_status:int=2):
-    query = """
-    UPDATE
-        checkout c
-    SET
-        c.Status = %s
-    WHERE
-        c.DecimalCode = %s
-        AND c.Status IN (0,1);
-    """
-
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        try:
-            cursor.execute(query, (new_status, book_decimal))
-            cursor.close()
-            conn.commit()
-        except MySQLdb.Error as e:
-            print(e)
-            return False
-
-    # return move_from_waitlist(book_decimal)
-    return move_from_waitlist(book_decimal)
-
 
 
 def checkout_book_hold(book_decimal:str, new_status:int=0):
@@ -480,7 +457,7 @@ def checkout_book_hold(book_decimal:str, new_status:int=0):
     UPDATE
         checkout c
     SET
-        c.Status = %s,
+        c.Status = 0,
         c.Due = (CURRENT_DATE + INTERVAL 2 WEEK)
     WHERE
         c.DecimalCode = %s
@@ -490,7 +467,7 @@ def checkout_book_hold(book_decimal:str, new_status:int=0):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(query, (new_status, book_decimal))
+            cursor.execute(query, book_decimal)
             conn.commit()
 
         except MySQLdb.Error as e:

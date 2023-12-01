@@ -57,18 +57,18 @@ class alterBook(forms.Form):
     decimal = forms.CharField(label="Decimal Code", max_length=12, required=False)
     bookid = forms.CharField(label="BookID", max_length=12, required=False)
 
-    fields = (
-        ('title', 'Title'),
-        ('author', 'Author'),
-        ('category', 'Category'),
-        ('publishdate', 'Year of Publication'),
-        ('publisher', 'Publisher'),
-        ('description', 'Description'),
-    )
+    fields = {
+        'title': 'Title',
+        'author': 'Author',
+        'category': 'Category',
+        'publishdate': 'Year of Publication',
+        'publisher': 'Publisher',
+        'description': 'Description',
+    }
     alterfields = forms.MultipleChoiceField(
         label="Which fields do you want to edit?",
-        widget=forms.CheckboxSelectMultiple, 
-        choices=fields, 
+        widget=forms.CheckboxSelectMultiple,
+        choices=fields,
         # initial=[0],  # Assuming you want "BookID" as the initial choice
         required=True
     )
