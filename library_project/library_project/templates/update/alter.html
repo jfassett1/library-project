@@ -1,11 +1,28 @@
-<div class="container">
-    <b>Alter Book</b>
-    <form id="alterForm" method="POST" action="{% url 'change'%}">
-        <input type="hidden" name="action" value="alter">
+<div class="container" id = "alt">
+    <div style = "text-align: center;">
+        <h3>Select Patron or Bookdata for update</h3>
+        <button onclick="showAlt('alterBook')">Book</button><button onclick = "showAlt('alterPatron')">Patron</button><br>
 
+        </div>
+
+    <form id="alterBook" method="POST" action="{% url 'change'%}">
+        <input type="hidden" name="action" value="alter">
+        <b>Alter Book</b>
+        <p>You must search by at least one parameter</p>
         {% csrf_token %}
         <table>
         {{ alterBook.as_table }}
+        </table>
+        <button type="submit">Submit</button>
+    </form>
+
+    <form id="alterPatron" method="POST" action="{% url 'change'%}" style = "display:none">
+        <input type="hidden" name="action" value="alterPatron">
+        <b>Alter Patron</b>
+        <p>You must search by at least one parameter</p>
+        {% csrf_token %}
+        <table>
+        {{ alterPatron.as_table }}
         </table>
         <button type="submit">Submit</button>
     </form>

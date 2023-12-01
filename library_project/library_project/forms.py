@@ -82,8 +82,11 @@ class alterBook(forms.Form):
     publisher = forms.CharField(label="Publisher", max_length=200, required=False)
     description = forms.CharField(label="Description", widget=forms.Textarea(), required=False)
 
-class alterPatron():
-    name = forms.CharField(label="Name", max_length=100, required=True)
+class alterPatron(forms.Form):
+    accid = forms.IntegerField(label="Account ID",required=True)
+    name = forms.CharField(label="Name", max_length=50, required=True)
+    address = forms.CharField(label = "Address",max_length=100)
+    email = forms.EmailField(label="Email Address",max_length=40)
 
 
 
