@@ -15,20 +15,6 @@ from sklearn.neighbors import NearestNeighbors
 # from django.contrib.auth.models import User
 
 
-#List of tables generated
-list_of_tables = [
-    "patron",
-    "bookdata",
-    "author",
-    "category",
-    "book",
-    "checkout",
-    "waitlist",
-]
-list_of_views = [
-    "combined_bookdata"
-]
-
 triggers = {
     # change book status to out of stock if checked out by someone
     "update_book_status_checkout": """
@@ -135,15 +121,15 @@ triggers = {
 }
 list_of_triggers = list(triggers.keys())
 #Creating tables
-queries = [
-"""
+tables = {
+'patron': """
 CREATE TABLE patron (
     AccID INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50) NOT NULL,
     Address VARCHAR(100) NOT NULL,
     Email VARCHAR(40) NOT NULL
 );""",
-"""
+'bookdata': """
 CREATE TABLE bookdata (
 	BookID INT PRIMARY KEY AUTO_INCREMENT,
 	Title VARCHAR(255) NOT NULL,
@@ -152,25 +138,25 @@ CREATE TABLE bookdata (
 	Description TEXT,
     FULLTEXT idx (Title, Description)
 ) Engine = InnoDB;""",
-"""
+'author': """
 CREATE TABLE author (
     BookID INT REFERENCES bookdata(BookID),
     Name VARCHAR(200) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, Name)
 );""",
-"""
+'category': """
 CREATE TABLE category (
     BookID INT REFERENCES bookdata(BookID),
     CategoryName VARCHAR(500) DEFAULT 'UNKNOWN',
     PRIMARY KEY (BookID, CategoryName)
 );""",
-"""
+'book': """
 CREATE TABLE book (
     DecimalCode VARCHAR(25) PRIMARY KEY,
     BookID INT REFERENCES bookdata(BookID),
     Status TINYINT NOT NULL
 );""",
-"""
+'checkout': """
 CREATE TABLE checkout (
     Patron VARCHAR(150) REFERENCES auth_user(username),
     DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
@@ -180,91 +166,76 @@ CREATE TABLE checkout (
     Status TINYINT NOT NULL,
     PRIMARY KEY (DecimalCode, TimeOut)
 );""",
-"""
+'waitlist': """
 CREATE TABLE waitlist (
     ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
     Patron VARCHAR(150) REFERENCES auth_user(username),
     BookID INT REFERENCES bookdata(BookID)
-);""",
-"""
-CREATE TABLE bookshelf (
-    BookshelfID INT PRIMARY KEY,
-    Category VARCHAR(200),
-    Slots INT,
 );"""
-]
+}
 
-views = [
-    """
-        CREATE VIEW combined_bookdata AS
-        SELECT
-            bd.BookID,
-            bd.Title,
-            bd.PublishDate,
-            bd.Publisher,
-            bd.Description,
-            b.DecimalCode,
-            b.Status
-        FROM
-            book b
-            INNER JOIN bookdata bd ON bd.BookID = b.BookID;
-        """
-]
+views = {
+'combined_bookdata':"""
+CREATE VIEW combined_bookdata AS
+SELECT
+    bd.BookID,
+    bd.Title,
+    bd.PublishDate,
+    bd.Publisher,
+    bd.Description,
+    b.DecimalCode,
+    b.Status
+FROM
+    book b
+    INNER JOIN bookdata bd ON bd.BookID = b.BookID;
+"""
+}
+
+scheduled_events = {
+'mark_overdue_books':"""
+CREATE EVENT mark_overdue_books
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    UPDATE checkout c
+    SET c.Status = 1
+    WHERE c.Due < CURRENT_DATE;
+END;
+
+"""
+}
 #TODO: make accID their username instead of an integer
 
 # queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
 # queries.append("CREATE TABLE elevator (ID CHAR(8) NOT NULL, Floor INT NOT NULL, Wait TIME NOT NULL, PRIMARY KEY (ID, Floor));")
-
-
-def create_table():
-
+def create_mysql_object(objects:dict, kind:str):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
 
-        for table,tablename in zip(queries,list_of_tables):
-            print(f"Creating table {tablename}")
+        for name, query in objects.items():
+            print(f"Creating {kind} {name}")
+
             try:
-                cursor.execute(table)
+                cursor.execute(query)
+                print(f"Created {name} Succesfully!")
             except MySQLdb.Error as e:
-                print(e)
-            else:
-                print("Created Succesfully!")
-        # Execute the query for each set of values in the list
+                print("Error:", e)
+                conn.rollback()
         conn.commit()
+
+def create_table():
+    create_mysql_object(tables, "table")
 
 
 def create_view():
-
-    with MySQLdb.connect("db") as conn:
-
-        cursor = get_cursor(conn)
-
-        try:
-            print("Creating view")
-            cursor.execute(views[0])
-            conn.commit()
-            print("View created succesfully!")
-        except Exception as e:
-            print("Error:", e)
-            conn.rollback()
-
-
+    create_mysql_object(views, "view")
 
 
 def create_trigger():
+    create_mysql_object(triggers, "trigger")
 
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        for trigger_name, trigger, in triggers.items():
-            print(f"Creating trigger {trigger_name}")
-            try:
-                cursor.execute(trigger)
-            except MySQLdb.Error as e:
-                print(e)
-            else:
-                print("Created Succesfully!")
-        # Execute the query for each set of values in the list
-        conn.commit()
+def create_scheduled_event():
+    create_mysql_object(scheduled_events, "scheduled event")
 
 def insert(table:str, fields:str, values:tuple[tuple, ...]|tuple[str, ...],additional:str=""):
 
@@ -402,6 +373,7 @@ def initialize():
     create_table()
     create_view()
     create_trigger()
+    create_scheduled_event()
     gen_insert_data()
 
 
@@ -416,11 +388,13 @@ def refresh(which:str="TABLE"):
     db_name="library"
     match which:
         case "TABLE":
-            names = list_of_tables
+            names = list(tables.keys())
         case "VIEW":
-            names = list_of_views
+            names = list(views.keys())
         case "TRIGGER":
-            names = list_of_triggers
+            names = list(triggers.keys())
+        case "EVENT":
+            names = list(scheduled_events.keys())
 
     if not names:
         return
@@ -438,7 +412,7 @@ def refresh(which:str="TABLE"):
                 print("Data removed successfully!")
 
 def refresh_all():
-    for kind in ("TABLE", "VIEW", "TRIGGER"):
+    for kind in ("VIEW", "TRIGGER", "EVENT", "TABLE",):
         refresh(kind)
 
 
@@ -449,16 +423,22 @@ if __name__ == "__main__":
         refresh_all()
         initialize()
 
-    if "trigger" in sys.argv:
-        refresh("TRIGGER")
-        create_trigger()
     if "table" in sys.argv:
         refresh("TABLE")
         create_table()
         gen_insert_data()
+
+    if "trigger" in sys.argv:
+        refresh("TRIGGER")
+        create_trigger()
+
     if "view" in sys.argv:
         refresh("VIEW")
         create_view()
+
+    if "event" in sys.argv:
+        refresh("EVENT")
+        create_scheduled_event()
 
 
     end_time = time.time()-start_time

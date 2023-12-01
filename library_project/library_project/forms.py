@@ -66,4 +66,37 @@ class rmForm(forms.Form):
 
 
 class ReturnForm(forms.Form):
-    decimal = forms.CharField(label="Decimal Code", max_length=20, required=True)
+    OPTIONS = (
+        (0, "Checked Out"),
+        (1,"Over Due"),
+        (2, "Returned"),
+        (3, "On Hold"),
+    )
+    raw_search = forms.CharField(label="Search", max_length=100, required=False)
+    title = forms.CharField(label="Title", max_length=100, required=False)
+    lower_publish_year = forms.IntegerField(
+        label="Minimum Year", initial=-9999, min_value=-9999, required=False
+    )
+    upper_publish_year = forms.IntegerField(
+        label="Maximum Year",
+        initial=datetime.date.today().year,
+        min_value=-9999,
+        required=False,
+    )
+    author = forms.CharField(label="Author", max_length=60, required=False)
+    publisher = forms.CharField(label="Publisher", max_length=60, required=False)
+    genre = forms.CharField(label="Genre", max_length=100, required=False)
+    in_stock = forms.ChoiceField(
+        label = "Status",
+        widget=forms.RadioSelect,
+        choices=OPTIONS,
+        initial=0,
+        required=False,  # Set the default choice here
+    )
+    decimal_code = forms.CharField(label="Decimal Code", max_length=12, required=False)
+    user_name = forms.CharField(label="Patron Username", max_length=50, required=False)
+    first_name = forms.CharField(label="First Name", max_length=120, required=False)
+    last_name = forms.CharField(label="Last Name", max_length=120, required=False)
+    email = forms.CharField(label="Email", max_length=120, required=False)
+    page = forms.IntegerField(min_value=1, widget=forms.HiddenInput(), initial=1)
+

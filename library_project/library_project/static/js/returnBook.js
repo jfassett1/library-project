@@ -1,6 +1,6 @@
-function returnBook() {
+function returnBook(book_decimal, new_status=2) {
     // Perform AJAX request to Django backend using fetch
-    const book_decimal = document.getElementById("id_decimal").value
+
 
 
     // console.log(JSON.stringify({book_id:book_decimal}))
@@ -11,14 +11,14 @@ function returnBook() {
             // You may need to include additional headers like CSRF token
             'X-CSRFToken': csrfToken // Define getCSRFToken() function
         },
-        body: JSON.stringify({book_decimal:book_decimal}),
+        body: JSON.stringify({book_decimal:book_decimal, new_status:new_status})
     })
     .then(response => {
         // user not logged in redirect
         if (response.redirected === true) {
-            alert("Must be logged in as an admin to books. Redirecting to login page.")
+            alert("Must be logged in as an admin to books. Redirecting to login page.");
             window.location.href = response.url;
-            return response.json()
+            return response.json();
         } else {
             return response.json();
         }
@@ -33,7 +33,7 @@ function returnBook() {
 }
 function handleCheckoutResponse(response) {
     if (response === null) {
-        return;
+        return null;
     } else if (response.success) {
         alert('Book found successfully!');
         // location.reload();

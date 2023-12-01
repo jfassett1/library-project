@@ -27,17 +27,103 @@
 {%block body%}
 <div class="container">
     <b>Return Book</b>
-    <form id="return_form" method="POST" action="{% url 'return_book'%}">
-        {% csrf_token %}
+    <form id="return_form" method="GET" action="{% url 'return_book'%}">
+        {% comment %} {% csrf_token %} {% endcomment %}
         {% comment %} <input type="hidden" name="action" value="return"> {% endcomment %}
         <table>
-        {{ returnForm.as_table }}
+        {{ form.as_table }}
         </table>
-        <p><button onClick="returnBook()">Check Book Status</button></p>
         <br>
-        <button type="submit">Mark Book as returned</button>
+        <button type="submit">Search Checkouts</button>
     </form>
-
-
 </div>
+
+
+<div class="container">
+    <pre> {{SQLquery.0}} </pre>
+{% if results %}
+<button class="prevButton" type="button" onclick="previousPage()">Previous</button>
+<button class="nextButton" type="button" onclick="nextPage()">Next</button>
+<p> Showing results <strong id="resultsNumbers">{{ num_res.0 }}-{{ num_res.1}}</strong></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Username</th>
+                <th>Decimal Code</th>
+                <th>Checkout Time</th>
+                <th>Due Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+                <tr>
+                    <td><a href="{% url 'book-details' result.0 %}">{{ result.1 }}</a></td>  <!-- Title -->
+                    <td>{{ result.2 }}</td>  <!-- Username -->
+                    <td>{{ result.3 }}</td>  <!-- Decimal Code -->
+                    <td>{{ result.4 }}</td>  <!-- Checkout Time -->
+                    <td>{{ result.5 }}</td>  <!-- Due Date -->
+                    {% if result.6 == 0 %}   <!-- Status -->
+                        <td>Checked Out</td>
+                        <td><button onClick="returnBook('{{result.3}}')">Return</button></td>
+                    {% elif result.6 == 1 %}
+                        <td>Over Due</td>
+                        <td><button onClick="returnBook('{{result.3}}')">Return</button></td>
+
+                    {% elif result.6 == 2 %}
+                        <td>Returned</td>
+                    {% else%}
+                        <td>On Hold</td>
+                        <td><button onClick="returnBook('{{result.3}}')">Return</button></td>
+                        <td><button onClick="returnBook('{{result.3}}', 0)">Return</button></td>
+
+                    {% endif%}
+
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p id="noResults">No results found.</p>
+{% endif %}
+<button class="prevButton" type="button" onclick="previousPage()">Previous</button>
+<button class="nextButton" type="button" onclick="nextPage()">Next</button>
+<script>
+    const queryString = window.location.search
+    const urlParams = new URLSearchParams(queryString);
+    const pageNum = parseInt(urlParams.get("page"));
+    const pageField = document.getElementById('id_page');
+
+    function previousPage() {
+        pageField.value = Math.max(pageNum - 1, 1);
+        document.getElementById('return_form').submit();
+    }
+
+    function nextPage() {
+        pageField.value = pageNum + 1;
+        document.getElementById('return_form').submit();
+    }
+
+    let nextDisabled = false;
+    if (document.getElementById('noResults') != null) {
+        nextDisabled = true;
+    } else {
+        const [lower, upper] = document.getElementById('resultsNumbers').innerText.split("-");
+        nextDisabled = parseInt(upper)-parseInt(lower) < 50
+    }
+    for (button of document.getElementsByClassName("nextButton")) {
+        button.disabled = nextDisabled;
+    }
+
+    for (button of document.getElementsByClassName("prevButton")) {
+        button.disabled = pageNum === 1;
+    }
+</script>
+
+
+
+
+
 {%endblock%}

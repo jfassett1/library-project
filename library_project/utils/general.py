@@ -107,6 +107,131 @@ def construct_search_query(
 
     return results, query, search_params
 
+def process_return_form(form):
+    # Construct the query based on form data
+    search_query = form.cleaned_data["raw_search"]
+    advanced_search = {}
+    advanced_search["a.Name"] = form.cleaned_data["author"]
+    advanced_search["c.CategoryName"] = form.cleaned_data["genre"]
+
+    advanced_search["ch.Status"] = form.cleaned_data["in_stock"]
+    advanced_search["ch.DecimalCode"] = form.cleaned_data["decimal_code"]
+    advanced_search["ch.Patron"] = form.cleaned_data["user_name"]
+
+    advanced_search["ud.first_name"] = form.cleaned_data["first_name"]
+    advanced_search["ud.last_name"] = form.cleaned_data["last_name"]
+    advanced_search["ud.email"] = form.cleaned_data["email"]
+
+    advanced_search["cb.Title"] = form.cleaned_data["title"]
+    advanced_search["cb.Publisher"] = form.cleaned_data["publisher"]
+
+    advanced_search["minYear"] = form.cleaned_data["lower_publish_year"]
+    advanced_search["maxYear"] = form.cleaned_data["upper_publish_year"]
+
+    page = form.cleaned_data["page"]
+
+    return search_query, advanced_search, page
+
+def construct_return_query(
+    search_term, advanced_search_fields, page_number: int, results_per_page: int
+):
+    query = """
+    SELECT
+        ch.BookID,
+        cb.Title,
+        ch.Patron,
+        ch.DecimalCode,
+        ch.TimeOut,
+        ch.Due,
+        ch.Status
+    FROM
+        checkout ch
+        LEFT JOIN combined_bookdata cb ON cb.DecimalCode = ch.DecimalCode
+        LEFT JOIN (
+            SELECT GROUP_CONCAT(CategoryName), BookID
+            FROM category
+            GROUP BY BookID
+            ) c ON ch.BookID = c.BookID
+        LEFT JOIN (
+                SELECT GROUP_CONCAT(Name), BookID
+                FROM author
+                GROUP BY BookID
+            ) a ON ch.BookID = a.BookID
+        LEFT JOIN auth_user ud ON ud.username = ch.Patron
+    WHERE
+        1
+    """
+    search_params = []
+    if search_term:
+        query += """
+        AND MATCH (cb.Title, cb.Description)
+            AGAINST (%s IN NATURAL LANGUAGE MODE)"""
+        search_params.append(search_term)
+
+    # Add advanced search conditions
+    exclude = ("ch.Status", "minYear", "maxYear")
+    for field, value in filter(
+        lambda x: x[1] != "" and x[0] not in exclude, advanced_search_fields.items()
+    ):
+        query += f" AND {field} LIKE %s"
+        search_params.append(f"%{value}%")
+
+    min_yr_field = isinstance(advanced_search_fields["minYear"], int)
+    max_yr_field = isinstance(advanced_search_fields["maxYear"], int)
+
+    if min_yr_field and max_yr_field:
+        min_yr = max(advanced_search_fields["minYear"], -9999)
+        max_yr = min(advanced_search_fields["maxYear"], datetime.date.today().year)
+        if min_yr > max_yr:
+            min_yr, max_yr = max_yr, min_yr
+
+        query += """
+        AND cb.PublishDate BETWEEN %s AND %s
+        """
+        search_params.extend([min_yr, max_yr])
+    elif min_yr_field:
+        min_yr = max(advanced_search_fields["minYear"], -9999)
+        query += """
+        AND cb.PublishDate >= %s
+        """
+        search_params.append(min_yr)
+    elif max_yr_field:
+        max_yr = min(advanced_search_fields["maxYear"], datetime.date.today().year)
+
+        query += """
+        AND cb.PublishDate <= %s
+        """
+        search_params.append(max_yr)
+
+    status = (
+        advanced_search_fields["ch.Status"]
+        if advanced_search_fields["ch.Status"] != ""
+        else 0
+    )
+    query += "\nAND ch.Status >= %s\n"
+    search_params.append(status)
+
+    # Add pagination
+    offset = (page_number - 1) * results_per_page
+    query += f" LIMIT {results_per_page} OFFSET {offset};"
+    # logger.info(query)
+
+    # return query, search_params
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+
+        if search_term or advanced_search_fields:
+            cursor.execute(query, search_params)
+        else:
+            cursor.execute(query)
+
+        # Fetch the results
+        results = cursor.fetchall()
+
+    # print(*results, sep="\n")
+
+    return results, query, search_params
+
 
 def find_unread_book_id(
     best_sample_titles: list[str], username: str | None, conn: MySQLdb.Connection
@@ -304,7 +429,7 @@ def get_copy_status(book_decimal: str):
     # no results means no one in waitlist
     return results[0][0]
 
-def checkout_book_return(decimal_code):
+def checkout_book_return(book_decimal:str, new_status:int=2):
     query = """
     UPDATE
         checkout c
@@ -317,16 +442,39 @@ def checkout_book_return(decimal_code):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(query, (2, decimal_code))
+            cursor.execute(query, (new_status, book_decimal))
             conn.commit()
 
         except MySQLdb.Error as e:
             print(e)
             return False
         else:
-            print(f"Return of {decimal_code} successful")
+            print(f"Return of {book_decimal} successful")
             return True
 
+def checkout_book_hold(book_decimal:str, new_status:int=0):
+    query = """
+    UPDATE
+        checkout c
+    SET
+        c.Status = %s,
+        c.Due = (CURRENT_DATE + INTERVAL 2 WEEK)
+    WHERE
+        c.DecimalCode = %s
+        AND c.Status = 3;
+    """
+    with MySQLdb.connect("db") as conn:
+        cursor = get_cursor(conn)
+        try:
+            cursor.execute(query, (new_status, book_decimal))
+            conn.commit()
+
+        except MySQLdb.Error as e:
+            print(e)
+            return False
+        else:
+            print(f"Return of {book_decimal} successful")
+            return True
 
 def user_checkout(user, book_id):
     query = """
@@ -371,13 +519,18 @@ def process_search_form(form):
     search_query = form.cleaned_data["raw_search"]
     advanced_search = {}
     advanced_search["a.Name"] = form.cleaned_data["author"]
+
     advanced_search["c.CategoryName"] = form.cleaned_data["genre"]
+
     advanced_search["cb.Status"] = form.cleaned_data["in_stock"]
     advanced_search["cb.DecimalCode"] = form.cleaned_data["decimal_code"]
     advanced_search["cb.Title"] = form.cleaned_data["title"]
     advanced_search["cb.Publisher"] = form.cleaned_data["publisher"]
     advanced_search["minYear"] = form.cleaned_data["lower_publish_year"]
     advanced_search["maxYear"] = form.cleaned_data["upper_publish_year"]
+
     page = form.cleaned_data["page"]
 
     return search_query, advanced_search, page
+
+

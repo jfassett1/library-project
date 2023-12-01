@@ -9,7 +9,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.safestring import mark_safe
-from utils.general import find_similar_books, get_copy_status, process_search_form
+from utils.general import checkout_book_hold, construct_return_query, find_similar_books, get_copy_status, process_return_form, process_search_form
 from utils.general import (
     get_book_best_status,
     user_waitlist,
@@ -120,8 +120,12 @@ def check_status(request):
         body_unicode = request.body.decode("utf-8")
         body = json.loads(body_unicode)
         print(body)
+        book = None
+        if body["new_status"] == 2:
+            book = checkout_book_return(**body)
+        elif body["new_status"] == 0:
+            book = checkout_book_hold(**body)
 
-        book = get_copy_status(**body)
         if book is None:
             return JsonResponse({"failed": "Book not found in checkout"})
 
@@ -134,16 +138,44 @@ def check_status(request):
     # If the request method is not POST, return an error response
     return JsonResponse({"error": "Invalid request method"})
 
+# @staff_member_required
+# def return_book(request):
+#     if request.method == "POST":
+#         form = ReturnForm(request.POST)
+#         data = form.cleaned_data
+#         return_status = checkout_book_return(data.cleaned_data['decimal_code'])
+#         return render(request, "update/returns.html", {"return_status":return_status,"returnForm":form})
+#     else:
+#         return render(request, "update/returns.html", {"return_status":None,"returnForm":ReturnForm()})
+
 @staff_member_required
 def return_book(request):
-    if request.method == "POST":
-        form = ReturnForm(request.POST)
-        data = form.cleaned_data
-        return_status = checkout_book_return(data.cleaned_data['decimal_code'])
-        return render(request, "update/returns.html", {"return_status":return_status,"returnForm":form})
-    else:
-        return render(request, "update/returns.html", {"return_status":None,"returnForm":ReturnForm()})
+    if request.method == "GET":
+        form = ReturnForm(request.GET)
+        if not form.is_valid():
+            return render(request, "update/returns.html",{"form":ReturnForm()} )
+        search_query, advanced_search, page = process_return_form(form)
 
+        RESULTS_PER_PAGE = 50
+        results, query, qfields = construct_return_query(
+            search_query, advanced_search, page, RESULTS_PER_PAGE
+        )
+        results_numbers = (page - 1) * RESULTS_PER_PAGE
+
+        temp = form.cleaned_data
+        temp["page"] = 1
+        new_form = ReturnForm(temp)
+        return render(
+            request,
+            "update/returns.html",
+            {
+                "form": new_form,
+                "SQLquery": query,
+                "results": results,
+                "num_res": (results_numbers, results_numbers + len(results)),
+            },
+        )
+    return render(request, "update/returns.html",{"form":ReturnForm()} )
 
 @staff_member_required
 def update(request):
