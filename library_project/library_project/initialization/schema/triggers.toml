@@ -1,0 +1,43 @@
+update_book_status_checkout = """
+
+    CREATE TRIGGER update_book_status_checkout
+    BEFORE INSERT ON checkout
+    FOR EACH ROW
+    BEGIN
+        DECLARE new_status INT;
+        DECLARE decimal_code_to_update VARCHAR(25);
+
+        SET new_status = NEW.Status;
+
+        SET decimal_code_to_update = (
+            SELECT MIN(b.DecimalCode) FROM book b WHERE b.BookID = NEW.BookID AND b.Status = 0
+        );
+
+        IF new_status = 0 THEN
+            SET NEW.DecimalCode = decimal_code_to_update;
+            UPDATE book SET Status = 1 WHERE DecimalCode = decimal_code_to_update;
+        ELSEIF new_status = 3 THEN
+            UPDATE book SET Status = 2 WHERE BookID = NEW.BookID;
+        END IF;
+    END
+    """
+update_book_status_return = """
+
+    CREATE TRIGGER update_book_status_return
+    AFTER UPDATE ON checkout
+    FOR EACH ROW
+    BEGIN
+        IF NEW.Status = 2 THEN
+            UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
+        END IF;
+    END;
+    """
+update_book_status_waitlist = """
+
+    CREATE TRIGGER update_book_status_waitlist
+    AFTER INSERT ON waitlist
+    FOR EACH ROW
+    BEGIN
+        UPDATE book SET book.Status = 2 WHERE book.BookID = NEW.BookID;
+    END;
+    """

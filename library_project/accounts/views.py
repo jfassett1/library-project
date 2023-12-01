@@ -65,13 +65,16 @@ def profile_view(request):
         with MySQLdb.connect("db") as conn:
             cursor = get_cursor(conn)
             try:
-                query = f"""SELECT bd.title, c.DecimalCode,c.Due
+                query = f"""
+                SELECT bd.title, c.DecimalCode,c.Due
                 FROM checkout as c
-                INNER JOIN book as b
-                ON c.DecimalCode = b.DecimalCode
-                INNER JOIN bookdata as bd
-                ON b.BookID = bd.BookID
-                WHERE Patron = '{username}'
+                INNER JOIN
+                    book as b ON c.DecimalCode = b.DecimalCode
+                INNER JOIN
+                    bookdata as bd ON b.BookID = bd.BookID
+                WHERE
+                    c.Patron = '{username}'
+                    AND c.Status <> 2
                 ORDER BY c.TimeOut"""
                 cursor.execute(query)
                 data = cursor.fetchall()

@@ -18,9 +18,30 @@ def keys_values_to_dict(keys: list | tuple, values: list | tuple) -> dict:
     return ret
 
 
+def process_search_form(form):
+    # Construct the query based on form data
+    search_query = form.cleaned_data["raw_search"]
+    advanced_search = {}
+    advanced_search["a.Name"] = form.cleaned_data["author"]
+
+    advanced_search["c.CategoryName"] = form.cleaned_data["genre"]
+
+    advanced_search["cb.Status"] = form.cleaned_data["in_stock"]
+    advanced_search["cb.DecimalCode"] = form.cleaned_data["decimal_code"]
+    advanced_search["cb.Title"] = form.cleaned_data["title"]
+    advanced_search["cb.Publisher"] = form.cleaned_data["publisher"]
+    advanced_search["minYear"] = form.cleaned_data["lower_publish_year"]
+    advanced_search["maxYear"] = form.cleaned_data["upper_publish_year"]
+
+    page = form.cleaned_data["page"]
+
+    return search_query, advanced_search, page
+
+
 def construct_search_query(
-    search_term, advanced_search_fields, page_number: int, results_per_page: int
-):
+    form, results_per_page: int
+) -> tuple:
+    search_term, advanced_search_fields, page = process_search_form(form)
     query = """
     SELECT
         cb.BookID,
@@ -87,7 +108,7 @@ def construct_search_query(
     search_params.append(status)
 
     # Add pagination
-    offset = (page_number - 1) * results_per_page
+    offset = (page - 1) * results_per_page
     query += f" LIMIT {results_per_page} OFFSET {offset};"
     # logger.info(query)
 
@@ -105,7 +126,8 @@ def construct_search_query(
 
     # print(*results, sep="\n")
 
-    return results, query, search_params
+    return results, query, page
+
 
 def process_return_form(form):
     # Construct the query based on form data
@@ -132,9 +154,11 @@ def process_return_form(form):
 
     return search_query, advanced_search, page
 
+
 def construct_return_query(
-    search_term, advanced_search_fields, page_number: int, results_per_page: int
+    form, results_per_page: int
 ):
+    search_term, advanced_search_fields, page = process_return_form(form)
     query = """
     SELECT
         ch.BookID,
@@ -208,11 +232,11 @@ def construct_return_query(
         if advanced_search_fields["ch.Status"] != ""
         else 0
     )
-    query += "\nAND ch.Status >= %s\n"
+    query += "\nAND ch.Status = %s\n"
     search_params.append(status)
 
     # Add pagination
-    offset = (page_number - 1) * results_per_page
+    offset = (page - 1) * results_per_page
     query += f" LIMIT {results_per_page} OFFSET {offset};"
     # logger.info(query)
 
@@ -230,7 +254,7 @@ def construct_return_query(
 
     # print(*results, sep="\n")
 
-    return results, query, search_params
+    return results, query, page
 
 
 def find_unread_book_id(
@@ -289,12 +313,13 @@ def predict_similar(info: list[str]):
     return [titlemap[i] for _, i in predictions]
 
 
-def find_similar_books(request, book_name):
+def find_similar_books(request, book_name:str):
     with MySQLdb.connect("db") as conn:
         try:
             user = User.objects.get(username=request.user.username)
             username = user.username
-        except:
+        # cant find where the error type is from so cant import and catch it
+        except:  # noqa: E722
             username = None
         return find_unread_book_id(predict_similar([book_name]), username, conn)
 
@@ -410,6 +435,7 @@ def get_book_best_status(book_id: str):
     # no results means no one in waitlist
     return not results[0][0]
 
+
 def get_copy_status(book_decimal: str):
     query = """
     SELECT
@@ -433,13 +459,16 @@ def get_copy_status(book_decimal: str):
     return results[0][0]
 
 
-def move_from_waitlist(book_decimal):
+def checkout_book_return(book_decimal: str, new_status: int = 2):
+    # returns book and moves person from waitlist if they exist
     procedure_call_query = f"CALL move_to_hold_from_waitlist('{book_decimal}');"
 
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(procedure_call_query,)
+            cursor.execute(
+                procedure_call_query,
+            )
             cursor.close()
             conn.commit()
         except MySQLdb.Error as e:
@@ -449,38 +478,13 @@ def move_from_waitlist(book_decimal):
             print(f"Return of {book_decimal} successful")
             return True
 
-def checkout_book_return(book_decimal:str, new_status:int=2):
+
+def checkout_book_hold(book_decimal: str, new_status: int = 0):
     query = """
     UPDATE
         checkout c
     SET
-        c.Status = %s
-    WHERE
-        c.DecimalCode = %s
-        AND c.Status IN (0,1);
-    """
-
-    with MySQLdb.connect("db") as conn:
-        cursor = get_cursor(conn)
-        try:
-            cursor.execute(query, (new_status, book_decimal))
-            cursor.close()
-            conn.commit()
-        except MySQLdb.Error as e:
-            print(e)
-            return False
-
-    # return move_from_waitlist(book_decimal)
-    return move_from_waitlist(book_decimal)
-
-
-
-def checkout_book_hold(book_decimal:str, new_status:int=0):
-    query = """
-    UPDATE
-        checkout c
-    SET
-        c.Status = %s,
+        c.Status = 0,
         c.Due = (CURRENT_DATE + INTERVAL 2 WEEK)
     WHERE
         c.DecimalCode = %s
@@ -490,7 +494,7 @@ def checkout_book_hold(book_decimal:str, new_status:int=0):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(query, (new_status, book_decimal))
+            cursor.execute(query, book_decimal)
             conn.commit()
 
         except MySQLdb.Error as e:
@@ -500,7 +504,8 @@ def checkout_book_hold(book_decimal:str, new_status:int=0):
             print(f"Return of {book_decimal} successful")
             return True
 
-def user_checkout(user, book_id):
+
+def user_checkout(user:str, book_id:int):
     query = """
     INSERT INTO checkout (Patron, BookID, Status)
     VALUES (%s, %s, %s);
@@ -519,7 +524,7 @@ def user_checkout(user, book_id):
             return True
 
 
-def user_waitlist(user, book_id):
+def user_waitlist(user:str, book_id:int):
     query = """
     INSERT INTO waitlist (Patron, BookID)
     VALUES (%s,%s);
@@ -536,25 +541,5 @@ def user_waitlist(user, book_id):
         else:
             print(f"Waitlist of {book_id} by {user} successful")
             return True
-
-
-def process_search_form(form):
-    # Construct the query based on form data
-    search_query = form.cleaned_data["raw_search"]
-    advanced_search = {}
-    advanced_search["a.Name"] = form.cleaned_data["author"]
-
-    advanced_search["c.CategoryName"] = form.cleaned_data["genre"]
-
-    advanced_search["cb.Status"] = form.cleaned_data["in_stock"]
-    advanced_search["cb.DecimalCode"] = form.cleaned_data["decimal_code"]
-    advanced_search["cb.Title"] = form.cleaned_data["title"]
-    advanced_search["cb.Publisher"] = form.cleaned_data["publisher"]
-    advanced_search["minYear"] = form.cleaned_data["lower_publish_year"]
-    advanced_search["maxYear"] = form.cleaned_data["upper_publish_year"]
-
-    page = form.cleaned_data["page"]
-
-    return search_query, advanced_search, page
 
 

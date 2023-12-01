@@ -1,0 +1,23 @@
+mark_overdue_books = """
+
+CREATE EVENT mark_overdue_books
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    UPDATE checkout c
+    SET c.Status = 1
+    WHERE
+        c.Due < CURRENT_DATE
+        AND c.Status = 0;
+END;
+"""
+return_hold_books = """
+
+CREATE EVENT return_hold_books
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    CALL return_hold_books_proc();
+END;
+
+"""

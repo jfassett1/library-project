@@ -198,20 +198,18 @@ def read_books_data(nrows=None):
     # fill in remaining nulls with none
     books_data = books_data.where(pd.notnull(books_data), None)
 
-    # create book ID column for use later
-    books_data["BookID"] = books_data.index
+
 
     # create a sample of books weighted by number of reviews
     books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
     sample_data = books_data.sample(40_000, replace=True, weights=books_data["ratingsCount"])
-    sample_data.sort_values("BookID", inplace=True)
 
     # add decimal numbers to sample data
-    sample_data = pd.merge(generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
+    # sample_data = pd.merge(generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
     # this breaks stuff but in theory should work
     # sample_data = generate_shelf_decimal(sample_data)
 
-    return sample_data[["BookID","Title", "publishedDate", "publisher", "description", "authors", "categories", "DecimalCode", "BookStatus"]]
+    return sample_data[["Title", "publishedDate", "publisher", "description", "authors", "categories"]]
 
 
 if __name__ == "__main__":

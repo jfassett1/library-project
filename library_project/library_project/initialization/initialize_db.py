@@ -11,181 +11,19 @@ import time
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from gensim.parsing.preprocessing import preprocess_documents
 from sklearn.neighbors import NearestNeighbors
+import tomllib
 
 # from django.contrib.auth.models import User
+def read_schema(sch_type:str)->dict[str,str]:
+    with open(f"./schema/{sch_type}.toml", "rb") as f:
+        return tomllib.load(f)
 
+triggers = read_schema("triggers")
+procedures  = read_schema("procedures")
+tables = read_schema("tables")
+views = read_schema("views")
+scheduled_events = read_schema("scheduled_events")
 
-triggers = {
-    # change book status to out of stock if checked out by someone
-    "update_book_status_checkout": """
-    CREATE TRIGGER update_book_status_checkout
-    BEFORE INSERT ON checkout
-    FOR EACH ROW
-    BEGIN
-        DECLARE new_status INT;
-        DECLARE decimal_code_to_update VARCHAR(25);
-
-        SET new_status = NEW.Status;
-
-        SET decimal_code_to_update = (
-            SELECT MIN(b.DecimalCode) FROM book b WHERE b.BookID = NEW.BookID AND b.Status = 0
-        );
-
-        IF new_status = 0 THEN
-            SET NEW.DecimalCode = decimal_code_to_update;
-            UPDATE book SET Status = 1 WHERE DecimalCode = decimal_code_to_update;
-        END IF;
-    END
-    """,
-    # update book status when book is returned in checkout
-    "update_book_status_return": """
-    CREATE TRIGGER update_book_status_return
-    AFTER UPDATE ON checkout
-    FOR EACH ROW
-    BEGIN
-        IF NEW.Status = 2 THEN
-            UPDATE book SET Status = 0 WHERE DecimalCode = NEW.DecimalCode;
-        END IF;
-    END;
-    """,
-    # change all book copy status to reserved if
-    # someone is added to waitlist for the book
-    "update_book_status_waitlist": """
-    CREATE TRIGGER update_book_status_waitlist
-    AFTER INSERT ON waitlist
-    FOR EACH ROW
-    BEGIN
-        UPDATE book SET book.Status = 2 WHERE book.BookID = NEW.BookID;
-    END;
-    """
-}
-procedures = {
-    # call when a book is returned (checkout.status = 2)
-    # move first person from waitlist to checkout
-    # set checkout status to on hold (3)
-    # put book on hold for 3 days
-    # delete person from waitlist
-    'move_to_hold_from_waitlist':"""
-CREATE PROCEDURE move_to_hold_from_waitlist(IN decimal_code_value VARCHAR(25))
-BEGIN
-    DECLARE patron_id_var VARCHAR(150);
-    DECLARE waitlist_id_var BIGINT;
-    DECLARE due_date_var DATE;
-    DECLARE book_id_var INT;
-
-
-    SET book_id_var = (
-        SELECT BookID
-        FROM checkout
-        WHERE DecimalCode = decimal_code_value
-        LIMIT 1);
-
-
-    SELECT Patron, ListID INTO patron_id_var, waitlist_id_var
-    FROM waitlist
-    WHERE BookID = book_id_var
-    ORDER BY ListID ASC
-    LIMIT 1;
-    SELECT concat('patron is ', book_id_var);
-
-    IF patron_id_var IS NOT NULL THEN
-        SET due_date_var = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
-
-
-        INSERT INTO checkout (Patron, BookID, DecimalCode, Due, Status)
-        VALUES (patron_id_var, book_id_var, decimal_code_value, due_date_var, 3);
-
-        UPDATE book SET Status = 2 WHERE BookID = book_id_var;
-
-        DELETE FROM waitlist WHERE ListID = waitlist_id_var;
-    END IF;
-END
-"""
-}
-#Creating tables
-tables = {
-'patron': """
-CREATE TABLE patron (
-    AccID INT AUTO_INCREMENT PRIMARY KEY,
-    Name VARCHAR(50) NOT NULL,
-    Address VARCHAR(100) NOT NULL,
-    Email VARCHAR(40) NOT NULL
-);""",
-'bookdata': """
-CREATE TABLE bookdata (
-	BookID INT PRIMARY KEY AUTO_INCREMENT,
-	Title VARCHAR(255) NOT NULL,
-	PublishDate INT,
-	Publisher VARCHAR(50),
-	Description TEXT,
-    FULLTEXT idx (Title, Description)
-) Engine = InnoDB;""",
-'author': """
-CREATE TABLE author (
-    BookID INT REFERENCES bookdata(BookID),
-    Name VARCHAR(200) DEFAULT 'UNKNOWN',
-    PRIMARY KEY (BookID, Name)
-);""",
-'category': """
-CREATE TABLE category (
-    BookID INT REFERENCES bookdata(BookID),
-    CategoryName VARCHAR(500) DEFAULT 'UNKNOWN',
-    PRIMARY KEY (BookID, CategoryName)
-);""",
-'book': """
-CREATE TABLE book (
-    DecimalCode VARCHAR(25) PRIMARY KEY,
-    BookID INT REFERENCES bookdata(BookID),
-    Status TINYINT NOT NULL
-);""",
-'checkout': """
-CREATE TABLE checkout (
-    Patron VARCHAR(150) REFERENCES auth_user(username),
-    DecimalCode VARCHAR(25) REFERENCES book(DecimalCode),
-    BookID VARCHAR(25) REFERENCES bookdata(BookID),
-    TimeOut DATETIME DEFAULT CURRENT_TIMESTAMP,
-    Due DATE DEFAULT (CURRENT_DATE + INTERVAL 2 WEEK),
-    Status TINYINT NOT NULL,
-    PRIMARY KEY (DecimalCode, TimeOut)
-);""",
-'waitlist': """
-CREATE TABLE waitlist (
-    ListID BIGINT PRIMARY KEY AUTO_INCREMENT,
-    Patron VARCHAR(150) REFERENCES auth_user(username),
-    BookID INT REFERENCES bookdata(BookID)
-);"""
-}
-
-views = {
-'combined_bookdata':"""
-CREATE VIEW combined_bookdata AS
-SELECT
-    bd.BookID,
-    bd.Title,
-    bd.PublishDate,
-    bd.Publisher,
-    bd.Description,
-    b.DecimalCode,
-    b.Status
-FROM
-    book b
-    INNER JOIN bookdata bd ON bd.BookID = b.BookID;
-"""
-}
-
-scheduled_events = {
-'mark_overdue_books':"""
-CREATE EVENT mark_overdue_books
-ON SCHEDULE EVERY 1 DAY
-DO
-BEGIN
-    UPDATE checkout c
-    SET c.Status = 1
-    WHERE c.Due < CURRENT_DATE;
-END;
-
-"""
-}
 #TODO: make accID their username instead of an integer
 
 # queries.append("CREATE TABLE distance (Floor INT, Shelf1 INT NOT NULL, Shelf2 INT NOT NULL, Dist FLOAT NOT NULL, PRIMARY KEY (Shelf1, Shelf2));")
@@ -208,10 +46,8 @@ def create_mysql_object(objects:dict, kind:str):
 def create_table():
     create_mysql_object(tables, "table")
 
-
 def create_view():
     create_mysql_object(views, "view")
-
 
 def create_trigger():
     create_mysql_object(triggers, "trigger")
@@ -303,40 +139,47 @@ def gen_insert_data():
     books_data = populate_books.read_books_data(50_000)
     insert("bookdata",
            "Title, PublishDate, Publisher, Description",
-           populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
+        #    populate_books.books_to_tuples(books_data[["BookID","Title", "publishedDate", "publisher", "description"]].drop_duplicates(subset="BookID")[["Title", "publishedDate", "publisher", "description"]]))
+           populate_books.books_to_tuples(books_data[["Title", "publishedDate", "publisher", "description"]]))
 
     # extract and merge book data with correct book id
     data = books_data[
         [
             "Title",
-            "publishedDate",
-            "publisher",
-            "description",
-            "DecimalCode",
-            "BookStatus",
             "authors",
             "categories"
         ]
     ].set_index("Title")
-
+    print("preread:", data.head())
     # books = pd.merge(get_book_ids(), data, "inner", left_on="Title", right_index=True)
     updated_ids = get_book_ids()
+    print("postread:",updated_ids.head())
+    # sample_data = pd.merge(populate_books.generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
+    books_with_duplicates = pd.merge(updated_ids, data, how='inner', right_index=True, left_index=True)
+    # books = populate_books.merge(
+    #     updated_ids, data, False, "Title"
+    # ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
+    # books = books[books["BookID"]!=1]
 
-    books = populate_books.merge(
-        updated_ids, data, False, "Title"
-    ).drop_duplicates(subset="DecimalCode") # idk why this is required but it breaks without it
-    books = books[books["BookID"]!=1]
-
-    # insert books
-    insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
     # insert authors
-    books.reset_index()
-    books = books.set_index("BookID")
-    authors = populate_books.format_combined_data_df(books, "authors")
+    # books = books.reset_index()
+    books_without_dupes = books_with_duplicates.drop_duplicates("BookID").set_index("BookID")
+    authors = populate_books.format_combined_data_df(books_without_dupes, "authors")
     insert("author","BookID, Name",populate_books.books_to_tuples(authors, True)," ON DUPLICATE KEY UPDATE BookID = Values(BookID),Name = Values(Name)")
     # insert categories
-    categories = populate_books.format_combined_data_df(books, "categories")
+    categories = populate_books.format_combined_data_df(
+        books_without_dupes, "categories"
+        ).apply(
+            lambda x: populate_books.auto_truncate(x, 500)
+        )
     insert("category","BookID, CategoryName", populate_books.books_to_tuples(categories, True), " ON DUPLICATE KEY UPDATE BookID = Values(BookID),CategoryName = Values(CategoryName)")
+
+    print("\nbefore decimal\n\n", books_with_duplicates.head())
+    books = populate_books.generate_shelf_decimal(books_with_duplicates)
+
+    print("\nafter merge\n\n",books_with_duplicates.head())
+    # insert books
+    insert("book","DecimalCode, BookID, Status", populate_books.books_to_tuples(books[["DecimalCode", "BookID", "BookStatus"]]))
 
     # Create 100 fake patrons
     fake = Faker()

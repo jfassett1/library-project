@@ -1,6 +1,4 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
 import datetime
 
 
@@ -64,11 +62,11 @@ class alterBook(forms.Form):
         ('publishdate', 'Year of Publication'),
         ('publisher', 'Publisher'),
         ('description', 'Description'),
-    )
+    ) # type: ignore
     alterfields = forms.MultipleChoiceField(
         label="Which fields do you want to edit?",
-        widget=forms.CheckboxSelectMultiple, 
-        choices=fields, 
+        widget=forms.CheckboxSelectMultiple,
+        choices=fields, # type: ignore
         # initial=[0],  # Assuming you want "BookID" as the initial choice
         required=True
     )
