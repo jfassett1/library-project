@@ -34,6 +34,8 @@ class SearchForm(forms.Form):
     decimal_code = forms.CharField(label="Decimal Code", max_length=12, required=False)
     page = forms.IntegerField(min_value=1, widget=forms.HiddenInput(), initial=1)
 
+class addBook(forms.Form):
+    book_id = forms.IntegerField(label="BookID", min_value=0, required=True)
 
 class addPatron(forms.Form):
     name = forms.CharField(label="Name", max_length=50, required=True)

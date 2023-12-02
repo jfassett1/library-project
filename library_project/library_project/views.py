@@ -24,6 +24,7 @@ from utils.general import (
 from .forms import (
     ReturnForm,
     SearchForm,
+    addBook,
     addForm,
     alterBook,
     alterPatron,
@@ -182,6 +183,7 @@ def update(request):
         {
             "addForm": addForm(),
             "addPatron":addPatron(),
+            "addBook":addBook(),
             "rmBook": rmBook(),
             "rmPatron": rmPatron(),
             "alterBook": alterBook(),
@@ -205,6 +207,8 @@ def change(request):
             return alter_book(request)
         elif action == "alterPatron":
             alter_patron(request)
+        elif action == "copy":
+            return add_book(request)
         else:
             return HttpResponse("Invalid action submitted", action)
     return HttpResponse(f"Invalid request method:{request.method}")
@@ -500,9 +504,9 @@ LIMIT 10;"""
 def add_book(request):
     if request.method != "POST":
         return HttpResponse("Invalid request method")
-    form = addForm(request.POST)
+    form = addBook(request.POST)
     if not form.is_valid():
-        return HttpResponse("Invalid form")
+        return HttpResponse("Invalid form here")
     category = "Misc."
     with MySQLdb.connect('db') as conn:
         with get_cursor(conn,'library') as cursor:
@@ -541,6 +545,25 @@ def add_book(request):
             try:
                 cursor.execute(gen_decimal_query)
                 shelf_id = cursor.fetchone()
+                conn.commit()
+            except MySQLdb.Error as e:
+                print(e)
+                return HttpResponse("failed to fetch category")
+
+    with MySQLdb.connect('db') as conn:
+        with get_cursor(conn,'library') as cursor:
+            gen_decimal_query = """
+            SELECT MAX(PS.Shelf)
+            FROM (
+            SELECT
+                SUBSTRING_INDEX(cb.DecimalCode, '.', 1) AS Shelf,
+                COUNT(*) AS BooksInSubShelf,
+            FROM
+                combined_bookdata cb
+            GROUP BY Shelf, c.CategoryName;"""
+            try:
+                cursor.execute(gen_decimal_query)
+                shelf_id = cursor.fetchone() + ".0"
                 conn.commit()
             except MySQLdb.Error as e:
                 print(e)
