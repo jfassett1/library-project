@@ -44,6 +44,19 @@ function showAdd(formId) {
 {%include 'update/add.html'%}
 {%include 'update/remove.html'%}
 {%include 'update/alter.html'%}
+<div class="container" id = "add">
+    <div style = "text-align: center;">
+    <form id="addBook2" method="POST" action="{% url 'change'%}">
+        <input type="hidden" name="action" value="copy">
+        <b>Add Book Copy</b>
+        {% csrf_token %}
+        <table>
+        {{ addBook.as_table }}
+        </table>
+        <button type="submit">Submit</button>
+    </form>
 
+
+</div>
 {%endblock%}
 
