@@ -182,8 +182,8 @@ def update(request):
         "update/update.html",
         {
             "addForm": addForm(),
-            "addPatron":addPatron(),
-            "addBook":addBook(),
+            "addPatron": addPatron(),
+            "addBook": addBook(),
             "rmBook": rmBook(),
             "rmPatron": rmPatron(),
             "alterBook": alterBook(),
@@ -213,7 +213,6 @@ def change(request):
             return add_book(request)
         case _:
             return HttpResponse("Invalid action submitted", action)
-
 
 
 def alter_patron(request):
@@ -384,13 +383,13 @@ def remove_row(request):
             )
     return HttpResponse(f"Invalid request method remove_row: {request.method}")
 
+
 def remove_patron(request):
     if request.method == "POST":
         form = rmPatron(request.POST)
         if form.is_valid():
             conn = MySQLdb.connect("db")
             cursor = get_cursor(conn, "library")
-
 
             accID = form.cleaned_data["accid"]
             # Depending on searchby
@@ -409,18 +408,16 @@ def remove_patron(request):
     return HttpResponse(f"Invalid request method: {request.post}")
 
 
-
-
 def add_patron(request):
     if request.method == "POST":
         form = addPatron()
         if form.is_valid():
-            name = form.cleaned_data.get('name')
-            address= form.cleaned_data.get('address')
-            email = form.cleaned_data.get('email')
+            name = form.cleaned_data.get("name")
+            address = form.cleaned_data.get("address")
+            email = form.cleaned_data.get("email")
 
-            with MySQLdb.connect('db') as conn:
-                with get_cursor(conn,'library') as cursor:
+            with MySQLdb.connect("db") as conn:
+                with get_cursor(conn, "library") as cursor:
                     query = f"INSERT INTO patron (Name, Address, Email) VALUES({name}, {address}, {email})"
 
             try:
@@ -430,9 +427,10 @@ def add_patron(request):
             except MySQLdb.Error as e:
                 message = e
             return render(
-                request,
-                "update/change.html",
-                {"message": message, "query": [query]})
+                request, "update/change.html", {"message": message, "query": [query]}
+            )
+
+
 def add_row(request):
     if request.method == "POST":
         form = addForm(request.POST)
@@ -454,7 +452,7 @@ def add_row(request):
                 "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             )
 
-            #Getting decimal
+            # Getting decimal
             try:
                 # Bookdata Query
                 cursor.execute(query_bookdata)
@@ -463,7 +461,6 @@ def add_row(request):
                 # Author Query
                 cursor.execute(query_author, (bookID, author))
                 cursor.execute(query_category, (bookID, category))
-
 
                 conn.commit()
                 message = mark_safe(f"Insert Successful!<br>{bookID}")
@@ -476,6 +473,7 @@ def add_row(request):
             )
     return HttpResponse("Invalid request method")
 
+
 def add_book(request):
     if request.method != "POST":
         return HttpResponse("Invalid request method")
@@ -483,9 +481,9 @@ def add_book(request):
     if not form.is_valid():
         return HttpResponse("Invalid form here")
     category = "Misc."
-    with MySQLdb.connect('db') as conn:
-        with get_cursor(conn,'library') as cursor:
-            book_id = form.cleaned_data['book_id']
+    with MySQLdb.connect("db") as conn:
+        with get_cursor(conn, "library") as cursor:
+            book_id = form.cleaned_data["book_id"]
             fetch_category = """
             SELECT GROUP_CONCAT(DISTINCT c.CategoryName)
             FROM category c
@@ -501,8 +499,8 @@ def add_book(request):
                 return HttpResponse("failed to fetch category")
 
     shelf_id = None
-    with MySQLdb.connect('db') as conn:
-        with get_cursor(conn,'library') as cursor:
+    with MySQLdb.connect("db") as conn:
+        with get_cursor(conn, "library") as cursor:
             gen_decimal_query = """
             SELECT PS.Shelf
             FROM (
@@ -527,8 +525,8 @@ def add_book(request):
                 return HttpResponse("failed to get Decimal1")
 
     if shelf_id is None:
-        with MySQLdb.connect('db') as conn:
-            with get_cursor(conn,'library') as cursor:
+        with MySQLdb.connect("db") as conn:
+            with get_cursor(conn, "library") as cursor:
                 gen_decimal_query = """
                 SELECT MAX(PS.Shelf)
                 FROM (
@@ -546,20 +544,20 @@ def add_book(request):
                     print(e)
                     return HttpResponse("failed to fetch decimal 2")
     copy_number = 0
-    with MySQLdb.connect('db') as conn:
-            with get_cursor(conn,'library') as cursor:
-                fetch_copy = """
+    with MySQLdb.connect("db") as conn:
+        with get_cursor(conn, "library") as cursor:
+            fetch_copy = """
                 SELECT COUNT(*) FROM book where book.BookID = %s;
                 """
-                try:
-                    cursor.execute(fetch_copy, (book_id,))
-                    copy_number = cursor.fetchone()[0]
-                    conn.commit()
-                except MySQLdb.Error as e:
-                    print(e)
-                    return HttpResponse("failed to fetch decimal 2")
-    with MySQLdb.connect('db') as conn:
-        with get_cursor(conn,'library') as cursor:
+            try:
+                cursor.execute(fetch_copy, (book_id,))
+                copy_number = cursor.fetchone()[0]
+                conn.commit()
+            except MySQLdb.Error as e:
+                print(e)
+                return HttpResponse("failed to fetch decimal 2")
+    with MySQLdb.connect("db") as conn:
+        with get_cursor(conn, "library") as cursor:
             shelf_id += f".{book_id}.{copy_number}"
             q = """INSERT INTO book (BookID, DecimalCode, Status)
             VALUES (%s, %s, %s)"""
@@ -570,7 +568,6 @@ def add_book(request):
                 print(e)
                 return HttpResponse("failed to fetch category")
     return HttpResponse(f"Inserted {book_id} with {shelf_id} into book")
-
 
 
 def db_ping(request):

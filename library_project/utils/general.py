@@ -259,7 +259,7 @@ def construct_return_query(
 
 
 def find_unread_book_id(
-    best_sample_titles: list[str], username: str | None, conn: MySQLdb.Connection
+    best_sample_titles: list[str]|set[str], username: str | None, conn: MySQLdb.Connection
 ):
     cursor = get_cursor(conn)
 
@@ -438,7 +438,7 @@ def get_book_best_status(book_id: str):
     return not results[0][0]
 
 
-def get_copy_status(book_decimal: str):
+def get_copy_status(book_decimal: str)->None|int:
     query = """
     SELECT
         c.DecimalCode, c.Status
@@ -461,7 +461,7 @@ def get_copy_status(book_decimal: str):
     return results[0][0]
 
 
-def checkout_book_return(book_decimal: str, new_status: int = 2):
+def checkout_book_return(book_decimal: str, new_status: int = 2)->bool:
     # returns book and moves person from waitlist if they exist
     procedure_call_query = f"CALL move_to_hold_from_waitlist('{book_decimal}');"
 
@@ -481,7 +481,7 @@ def checkout_book_return(book_decimal: str, new_status: int = 2):
             return True
 
 
-def checkout_book_hold(book_decimal: str, new_status: int = 0):
+def checkout_book_hold(book_decimal: str, new_status: int = 0)->bool:
     query = """
     UPDATE
         checkout c
@@ -507,7 +507,7 @@ def checkout_book_hold(book_decimal: str, new_status: int = 0):
             return True
 
 
-def user_checkout(user:str, book_id:int):
+def user_checkout(user:str, book_id:int)->bool:
     query = """
     INSERT INTO checkout (Patron, BookID, Status)
     VALUES (%s, %s, %s);
@@ -526,7 +526,7 @@ def user_checkout(user:str, book_id:int):
             return True
 
 
-def user_waitlist(user:str, book_id:int):
+def user_waitlist(user:str, book_id:int)-> bool:
     query = """
     INSERT INTO waitlist (Patron, BookID)
     VALUES (%s,%s);
