@@ -438,7 +438,7 @@ SELECT
 FROM
     PotentialShelves PS
 GROUP BY
-    PS.BooksInSubShelf 
+    PS.BooksInSubShelf
 HAVING PS.BooksInSubShelf < 30
 LIMIT 10;"""
 
@@ -456,7 +456,7 @@ LIMIT 10;"""
                 # Author Query
                 cursor.execute(query_author, (bookID, author))
                 cursor.execute(query_category, (bookID, category))
-                
+
 
                 conn.commit()
                 message = mark_safe(f"Insert Successful!<br>{bookID}")
@@ -468,6 +468,66 @@ LIMIT 10;"""
                 {"message": message, "query": [query_bookdata,decimal]},
             )
     return HttpResponse("Invalid request method")
+
+def add_book(request):
+    if request.method != "POST":
+        return HttpResponse("Invalid request method")
+    form = addForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse("Invalid form")
+    category = "Misc."
+    with MySQLdb.connect('db') as conn:
+        with get_cursor(conn,'library') as cursor:
+            book_id = form.cleaned_data['book_id']
+            fetch_category = f"""
+            SELECT GROUP_CONCAT(DISTINCT c.CategoryName)
+            FROM category c
+            WHERE c.BookID = '{book_id}'
+            GROUP BY c.CategoryName
+            """
+            ## get data
+            try:
+                cursor.execute(fetch_category)
+                category = cursor.fetchone()
+            except MySQLdb.Error as e:
+                print(e)
+                return HttpResponse("failed to fetch category")
+
+    shelf_id = "999.0"
+    with MySQLdb.connect('db') as conn:
+        with get_cursor(conn,'library') as cursor:
+            gen_decimal_query = f"""
+            SELECT PS.Shelf
+            FROM (
+            SELECT
+                SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf,
+                COUNT(*) AS BooksInSubShelf,
+                GROUP_CONCAT(DISTINCT c.CategoryName) AS Cat
+
+            FROM
+                combined_bookdata cb
+                LEFT JOIN category c ON c.BookID = cb.BookID
+            GROUP BY Shelf, c.CategoryName
+            HAVING BooksInSubShelf < 30) AS PS
+            WHERE PS.Cat LIKE '%{category}%';"""
+            try:
+                cursor.execute(gen_decimal_query)
+                shelf_id = cursor.fetchone()
+                conn.commit()
+            except MySQLdb.Error as e:
+                print(e)
+                return HttpResponse("failed to fetch category")
+
+    with MySQLdb.connect('db') as conn:
+        with get_cursor(conn,'library') as cursor:
+            shelf_id += f".{book_id}.0"
+            q = f"INSERT INTO book SET BookID={book_id}, DecimalCode='{shelf_id}'"
+            try:
+                cursor.execute(q)
+                conn.commit()
+            except MySQLdb.Error as e:
+                print(e)
+                return HttpResponse("failed to fetch category")
 
 
 def db_ping(request):
