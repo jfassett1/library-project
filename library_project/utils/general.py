@@ -496,7 +496,7 @@ def checkout_book_hold(book_decimal: str, new_status: int = 0):
     with MySQLdb.connect("db") as conn:
         cursor = get_cursor(conn)
         try:
-            cursor.execute(query, book_decimal)
+            cursor.execute(query, (book_decimal,))
             conn.commit()
 
         except MySQLdb.Error as e:
