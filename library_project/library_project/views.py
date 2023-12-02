@@ -452,34 +452,7 @@ def add_row(request):
                 "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             )
 
-            query_decimal = f"""WITH PotentialShelves AS (
-    SELECT
-        SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf,
-        COUNT(*) AS BooksInSubShelf
-    FROM
-        combined_bookdata cb
-        INNER JOIN category cat ON cb.BookID = cat.BookID
-    WHERE
-        cat.CategoryName = '{category}'
-    GROUP BY
-        Shelf
-)
-
-SELECT
-    GROUP_CONCAT(PS.Shelf)
-FROM
-    PotentialShelves PS
-GROUP BY
-    PS.BooksInSubShelf
-HAVING PS.BooksInSubShelf < 30
-LIMIT 10;"""
-
             #Getting decimal
-            try:
-                cursor.execute(query_decimal)
-                decimal = cursor.fetchone()
-            except MySQLdb.Error as e:
-                return HttpResponse(f"{e}")
             try:
                 # Bookdata Query
                 cursor.execute(query_bookdata)
@@ -497,7 +470,7 @@ LIMIT 10;"""
             return render(
                 request,
                 "update/change.html",
-                {"message": message, "query": [query_bookdata,decimal]},
+                {"message": message, "query": [query_bookdata]},
             )
     return HttpResponse("Invalid request method")
 
