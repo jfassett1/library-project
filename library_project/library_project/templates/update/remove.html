@@ -18,11 +18,10 @@
         </table>
         <button type="submit">Submit</button>
     </form>
-    <form id = "rmPatron" method = "POST" style = "display:none">
-        <b>Remove Patron</b>
-        <p>You must search by at least one parameter</p>
+    <form id = "rmPatron" method = "POST" action="{% url 'change'%}" style = "display:none">
+        <b>Remove Patron</b><br><br>
         {% csrf_token %}
-        <input type="hidden" name="action" value="remove">
+        <input type="hidden" name="action" value="rmPatron">
         <table>
         {{ rmPatron.as_table }}
         </table>

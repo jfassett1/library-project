@@ -112,12 +112,8 @@ class rmBook(forms.Form):
     # desc = forms.CharField(label="Description",max_length = 300,required=True)
 
 class rmPatron(forms.Form):
-    searchoptions = ((0, "Name"), (1, "PatronID"))
-    SEARCHBY = forms.ChoiceField(
-        widget=forms.RadioSelect, choices=searchoptions, initial="Name", required=True
-    )
-    patron_name = forms.CharField(label="Name",max_length=100)
-    patron_id = forms.IntegerField(label="Patron ID")
+
+    accid = forms.IntegerField(label="PatronID",required=True)
 
 
 class ReturnForm(forms.Form):
