@@ -211,7 +211,7 @@ def gen_insert_data():
 
 
     insert("patron","Name, Address, Email",values)
-    # train_knn(updated_ids)
+    train_knn(updated_ids)
 
 
 
