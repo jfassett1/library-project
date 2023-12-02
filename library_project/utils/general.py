@@ -292,7 +292,7 @@ def find_unread_book_id(
 
 def predict_similar(info: list[str]):
     # Recommendation code
-    model = Doc2Vec.load(r"./library_project/recommendation/d2v.model")
+    model = Doc2Vec.load(r"./library_project/recommendation/d2v_titles.model")
     neigh = joblib.load(r"./library_project/recommendation/neighbors.pkl")
     titlemap = joblib.load(r"./library_project/recommendation/titlemap.pkl")
 
@@ -310,8 +310,9 @@ def predict_similar(info: list[str]):
         predictions.extend([(d, i) for d, i in zip(dist[0][1:], idxs[0][1:])])
 
     print(predictions)
+    print("are there dupes?",len(titlemap), len(set(titlemap.values())))
     predictions.sort()
-    return [titlemap[i] for _, i in predictions]
+    return set([titlemap[i] for _, i in predictions])
 
 
 def find_similar_books(request, book_name:str):
@@ -412,7 +413,7 @@ def get_book_details(bookid: int):
         return keys_values_to_dict(names, [tuple(r) for r in zip(*results)])
     except ValueError as e:
         print(e)
-        return keys_values_to_dict(names, ["Unknown"] * len(names))
+        return keys_values_to_dict(names, [("Unknown",)] * len(names))
 
 
 def get_book_best_status(book_id: str):

@@ -101,7 +101,6 @@ def format_combined_data_df(book_data:pd.DataFrame, column)->pd.DataFrame:
     #Turns string representations of list into actual list
     col_data[column] = col_data[column].apply(lambda x: eval(x))
     #Creates duplicate rows for each author of a book, keeps proper index
-    # exploded_col =
     return col_data.explode(column)
 
 
@@ -133,7 +132,7 @@ def generate_shelf_decimal(books_data: pd.DataFrame) -> pd.DataFrame:
 
     print("Generating bookshelves...")
 
-    library = pd.DataFrame()
+    library = []
     misc_cats = []
     shelf_num = 0
     for cat in books_data["categories"].unique():
@@ -142,14 +141,18 @@ def generate_shelf_decimal(books_data: pd.DataFrame) -> pd.DataFrame:
             misc_cats.append(cat)
         else:
             shelf_num, chunks = split_into_chunks(group, 30, shelf_num)
-            library = pd.concat([library, *chunks])
+            try:
+                library.extend(chunks)
+            except TypeError as e:
+                print(chunks)
+                raise e
 
     aggregated = aggregate_groups(books_data.isin(misc_cats).groupby("categories"), 200)
 
     for chunk in aggregated:
-        shelf_num, chunks = split_into_chunks(chunk, 30, shelf_num)
-        library = pd.concat([library, *chunks])
-
+        shelf_num, cs = split_into_chunks(chunk, 30, shelf_num)
+        library.extend(cs)
+    library = pd.concat(library)
     library["DecimalCode"] = library["DecimalCode"] + "." + library.groupby("BookID").cumcount().astype(str)
     library["BookStatus"] = np.zeros(library.shape[0], dtype=np.int16)
     print(f"Generated {shelf_num} bookshelves containing {len(books_data)} books")
@@ -197,19 +200,30 @@ def read_books_data(nrows=None):
 
     # fill in remaining nulls with none
     books_data = books_data.where(pd.notnull(books_data), None)
+    books_data["ratingsCount"] = np.log2(books_data["ratingsCount"].fillna(2))
 
+    print(books_data.head())
+    return books_data[["Title", "publishedDate", "publisher", "description", "authors", "categories", "ratingsCount"]]
 
-
+def read_books_sample(n_rows:int|None, sample_size:int=10_000):
+    books_data = read_books_data(n_rows)
     # create a sample of books weighted by number of reviews
-    books_data["ratingsCount"] = np.log10(books_data["ratingsCount"].fillna(2))
-    sample_data = books_data.sample(40_000, replace=True, weights=books_data["ratingsCount"])
-
-    # add decimal numbers to sample data
-    # sample_data = pd.merge(generate_shelf_decimal(sample_data[["BookID", "categories"]]), sample_data, how="inner", left_on="BookID", right_on="BookID")
-    # this breaks stuff but in theory should work
-    # sample_data = generate_shelf_decimal(sample_data)
-
+    sample_data = books_data.sample(sample_size, replace=True, weights=books_data["ratingsCount"])
     return sample_data[["Title", "publishedDate", "publisher", "description", "authors", "categories"]]
+
+def read_books_sample_no_replace(n_rows:int|None, sample_size:int=10_000):
+    books_data = read_books_data(n_rows)
+    # create a sample of books weighted by number of reviews
+    sample_data = books_data.sample(sample_size, replace=False, weights=books_data["ratingsCount"])
+    return sample_data[["Title", "publishedDate", "publisher", "description", "authors", "categories","ratingsCount"]]
+
+def add_replacement_sample(sampled_data:pd.DataFrame, sample_size:int=20_000):
+    if "ratingsCount" not in sampled_data.columns:
+        raise KeyError("Need ratings count for sample")
+    new_s = sampled_data.sample(sample_size, replace=True, weights=sampled_data["ratingsCount"])
+    new_s =  pd.concat([new_s, sampled_data])
+    new_s.sort_values(by="Title")
+    return new_s
 
 
 if __name__ == "__main__":
