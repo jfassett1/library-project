@@ -204,8 +204,8 @@ def change(request):
         elif action == "alterPatron":
             alter_patron(request)
         else:
-            return HttpResponse("epic fail", action)
-    return HttpResponse(request.method)
+            return HttpResponse("Invalid action submitted", action)
+    return HttpResponse(f"Invalid request method:{request.method}")
 
 
 def alter_patron(request):
@@ -420,10 +420,27 @@ def add_row(request):
                 "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             )
 
-            query_decimal = f"""SELECT
-                     SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf
-                FROM
-                    book cb"""
+            query_decimal = f"""WITH PotentialShelves AS (
+    SELECT
+        SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf,
+        COUNT(*) AS BooksInSubShelf
+    FROM
+        combined_bookdata cb
+        INNER JOIN category cat ON cb.BookID = cat.BookID
+    WHERE
+        cat.CategoryName = '{category}'
+    GROUP BY
+        Shelf
+)
+
+SELECT
+    GROUP_CONCAT(PS.Shelf)
+FROM
+    PotentialShelves PS
+GROUP BY
+    PS.BooksInSubShelf 
+HAVING PS.BooksInSubShelf < 30
+LIMIT 10;"""
 
             #Getting decimal
             try:
