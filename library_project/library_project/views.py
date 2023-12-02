@@ -193,25 +193,27 @@ def update(request):
 
 
 def change(request):
-    if request.method == "POST":
-        action = request.POST.get("action", "")
-        if action == "add":
+    if request.method != "POST":
+        return HttpResponse(f"Invalid request method:{request.method}")
+    action = request.POST.get("action", "")
+    match action:
+        case "add":
             return add_row(request)
-        elif action == "addPatron":
+        case "addPatron":
             return add_patron(request)
-        elif action == "remove":
+        case "remove":
             return remove_row(request)
-        elif action == "rmPatron":
+        case "rmPatron":
             return remove_patron(request)
-        elif action == "alter":
+        case "alter":
             return alter_book(request)
-        elif action == "alterPatron":
+        case "alterPatron":
             alter_patron(request)
-        elif action == "copy":
+        case "copy":
             return add_book(request)
-        else:
+        case _:
             return HttpResponse("Invalid action submitted", action)
-    return HttpResponse(f"Invalid request method:{request.method}")
+
 
 
 def alter_patron(request):
