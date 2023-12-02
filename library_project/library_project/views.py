@@ -199,6 +199,8 @@ def change(request):
             return add_patron(request)
         elif action == "remove":
             return remove_row(request)
+        elif action == "rmPatron":
+            return remove_patron(request)
         elif action == "alter":
             return alter_book(request)
         elif action == "alterPatron":
@@ -374,7 +376,33 @@ def remove_row(request):
             return render(
                 request, "update/change.html", {"message": message, "query": query}
             )
-    return HttpResponse("Invalid request method")
+    return HttpResponse(f"Invalid request method remove_row: {request.method}")
+
+def remove_patron(request):
+    if request.method == "POST":
+        form = rmPatron(request.POST)
+        if form.is_valid():
+            conn = MySQLdb.connect("db")
+            cursor = get_cursor(conn, "library")
+
+
+            accID = form.cleaned_data["accid"]
+            # Depending on searchby
+            query = f"DELETE FROM patron WHERE AccID = {accID}"
+
+            try:
+                cursor.execute(query)
+                conn.commit()
+
+                message = "Succesful?"
+            except MySQLdb.Error as e:
+                message = e
+            return render(
+                request, "update/change.html", {"message": message, "query": query}
+            )
+    return HttpResponse(f"Invalid request method: {request.post}")
+
+
 
 
 def add_patron(request):
@@ -419,32 +447,24 @@ def add_row(request):
             query_category = (
                 "INSERT INTO category (BookID, CategoryName) VALUES (%s,%s)"
             )
-
-            query_decimal = f"""WITH PotentialShelves AS (
-    SELECT
-        SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf,
-        COUNT(*) AS BooksInSubShelf
-    FROM
-        combined_bookdata cb
-        INNER JOIN category cat ON cb.BookID = cat.BookID
-    WHERE
-        cat.CategoryName = '{category}'
-    GROUP BY
-        Shelf
-)
-
-SELECT
-    GROUP_CONCAT(PS.Shelf)
-FROM
-    PotentialShelves PS
-GROUP BY
-    PS.BooksInSubShelf 
-HAVING PS.BooksInSubShelf < 30
-LIMIT 10;"""
-
             #Getting decimal
+
+            find_decimal = f"""SELECT PS.Shelf
+                                FROM (
+                                SELECT 
+                                    SUBSTRING_INDEX(cb.DecimalCode, '.', 2) AS Shelf,
+                                    COUNT(*) AS BooksInSubShelf,
+                                    GROUP_CONCAT(DISTINCT c.CategoryName) AS Cat
+
+                                FROM
+                                    combined_bookdata cb
+                                    LEFT JOIN category c ON c.BookID = cb.BookID
+                                GROUP BY Shelf, c.CategoryName
+                                HAVING BooksInSubShelf < 30) AS PS
+                                WHERE PS.Cat LIKE '%{category}%';"""
+            query_book = "INSERT INTO book (DecimalCode, BookID, Status) VALUES (%s, %s, %s)"
             try:
-                cursor.execute(query_decimal)
+                cursor.execute(find_decimal)
                 decimal = cursor.fetchone()
             except MySQLdb.Error as e:
                 return HttpResponse(f"{e}")
@@ -454,9 +474,10 @@ LIMIT 10;"""
                 # Gets bookID
                 bookID = cursor.lastrowid
                 # Author Query
+                decimal = f"{decimal[0]}.{bookID}.0"
+                cursor.execute(query_book,(decimal,bookID,0))
                 cursor.execute(query_author, (bookID, author))
                 cursor.execute(query_category, (bookID, category))
-                
 
                 conn.commit()
                 message = mark_safe(f"Insert Successful!<br>{bookID}")
